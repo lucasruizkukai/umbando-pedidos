@@ -50,8 +50,30 @@ const EMPTY = {
 
 const inputStyle = { width: "100%", boxSizing: "border-box", border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 12px", fontSize: 14, fontFamily: "Poppins, sans-serif", background: "#111111", color: "#F5F5F5", outline: "none" };
 const labelStyle = { display: "block", fontSize: 11, fontWeight: 700, color: "#A1A1AA", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 5, fontFamily: "Poppins, sans-serif" };
+const EXTRA_ITEMS_MARKER = "\n\n__EXTRA_ITEMS__\n";
 
 function generateId() { return `o_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`; }
+function createExtraItem() {
+  return { id: generateId(), tipo: "Guia", mat: "Miçanga", matd: "", cores: "", tam: "60cm", detalhes: "" };
+}
+
+function splitOrderNotes(rawObs) {
+  if (!rawObs || !rawObs.includes(EXTRA_ITEMS_MARKER)) return { visibleObs: rawObs || "", extraItems: [] };
+  const [visibleObs, rawItems] = rawObs.split(EXTRA_ITEMS_MARKER);
+  try {
+    const parsed = JSON.parse(rawItems);
+    return { visibleObs: visibleObs || "", extraItems: Array.isArray(parsed) ? parsed : [] };
+  } catch {
+    return { visibleObs: rawObs || "", extraItems: [] };
+  }
+}
+
+function buildOrderNotes(visibleObs, extraItems) {
+  const cleanObs = visibleObs?.trim() || "";
+  const validItems = (extraItems || []).filter((item) => item && (item.cores || item.detalhes || item.mat || item.tipo));
+  if (!validItems.length) return cleanObs;
+  return `${cleanObs}${EXTRA_ITEMS_MARKER}${JSON.stringify(validItems)}`.trim();
+}
 function formatDate(date) {
   if (!date) return "—";
   try { return new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" }); }
@@ -91,8 +113,10 @@ function Section({ title, children }) {
 }
 
 function Form({ init, onSave, onCancel, isEdit }) {
-  const [form, setForm] = useState({ ...EMPTY, ...(init || {}) });
+  const parsedInit = splitOrderNotes(init?.obs);
+  const [form, setForm] = useState({ ...EMPTY, ...(init || {}), obs: parsedInit.visibleObs });
   const [images, setImages] = useState(init?.imgs || []);
+  const [extraItems, setExtraItems] = useState(parsedInit.extraItems);
   const [mode, setMode] = useState("manual");
   const [conversation, setConversation] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -136,7 +160,7 @@ function Form({ init, onSave, onCancel, isEdit }) {
     }
     setSaving(true);
     const id = form.id || generateId();
-    const row = { ...form, id, imgs: images, criado_em: form.criado_em || new Date().toISOString(), upd: new Date().toISOString() };
+    const row = { ...form, id, obs: buildOrderNotes(form.obs, extraItems), imgs: images, criado_em: form.criado_em || new Date().toISOString(), upd: new Date().toISOString() };
     const { error } = await supabase.from("pedidos").upsert(row);
     if (error) {
       alert("Erro ao salvar. Tente novamente.");
@@ -299,6 +323,74 @@ function Form({ init, onSave, onCancel, isEdit }) {
         <Field label="Status"><Segmented opts={STATUS_LIST} val={form.status} onChange={(value) => setField("status", value)} small /></Field>
       </Section>
 
+      <Section title="🧩 Peças Adicionais">
+        <div style={{ marginBottom: 12, color: THEME.tl, fontSize: 13, fontFamily: "Poppins, sans-serif" }}>
+          Use essa área quando o mesmo cliente comprar mais de uma peça no mesmo pedido.
+        </div>
+        {extraItems.map((item, index) => {
+          const detailOptions = MATERIAL_DETAILS[item.mat] || [];
+          return (
+            <div key={item.id} style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 12, padding: 14, marginBottom: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <div style={{ color: THEME.gold, fontWeight: 700, fontSize: 13, fontFamily: "Poppins, sans-serif" }}>Peça {index + 2}</div>
+                <button
+                  type="button"
+                  onClick={() => setExtraItems((prev) => prev.filter((extra) => extra.id !== item.id))}
+                  style={{ border: `1px solid ${THEME.br}`, background: "transparent", color: "#F87171", borderRadius: 10, padding: "6px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}
+                >
+                  Remover
+                </button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <Field label="Tipo da peça">
+                  <Segmented
+                    opts={["Guia", "Brajá"]}
+                    val={item.tipo}
+                    onChange={(value) => setExtraItems((prev) => prev.map((extra) => (extra.id === item.id ? { ...extra, tipo: value } : extra)))}
+                  />
+                </Field>
+                <Field label="Material">
+                  <Segmented
+                    opts={MATERIALS}
+                    val={item.mat}
+                    onChange={(value) => setExtraItems((prev) => prev.map((extra) => (extra.id === item.id ? { ...extra, mat: value, matd: "" } : extra)))}
+                  />
+                </Field>
+              </div>
+              {detailOptions.length > 0 && (
+                <Field label={MATERIAL_LABELS[item.mat] || "Detalhe"}>
+                  <Segmented
+                    opts={detailOptions}
+                    val={item.matd}
+                    onChange={(value) => setExtraItems((prev) => prev.map((extra) => (extra.id === item.id ? { ...extra, matd: value } : extra)))}
+                  />
+                </Field>
+              )}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <Field label="Cores">
+                  <input value={item.cores} onChange={(event) => setExtraItems((prev) => prev.map((extra) => (extra.id === item.id ? { ...extra, cores: event.target.value } : extra)))} style={inputStyle} placeholder="Ex: preto e amarelo" />
+                </Field>
+                <Field label="Tamanho">
+                  <select value={item.tam} onChange={(event) => setExtraItems((prev) => prev.map((extra) => (extra.id === item.id ? { ...extra, tam: event.target.value } : extra)))} style={inputStyle}>
+                    {SIZES.map((size) => <option key={size} value={size}>{size}</option>)}
+                  </select>
+                </Field>
+              </div>
+              <Field label="Detalhes" full>
+                <textarea value={item.detalhes} onChange={(event) => setExtraItems((prev) => prev.map((extra) => (extra.id === item.id ? { ...extra, detalhes: event.target.value } : extra)))} style={{ ...inputStyle, height: 72, resize: "vertical", lineHeight: 1.6 }} placeholder="Firmas, pingente, acabamento ou qualquer diferença dessa peça" />
+              </Field>
+            </div>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => setExtraItems((prev) => [...prev, createExtraItem()])}
+          style={{ width: "100%", padding: "12px", borderRadius: 12, border: `1px dashed ${THEME.br}`, background: "transparent", color: THEME.gold, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}
+        >
+          + Adicionar outra peça ao pedido
+        </button>
+      </Section>
+
       <div style={{ display: "flex", gap: 10, paddingTop: 4 }}>
         {onCancel && <button type="button" onClick={onCancel} style={{ flex: 1, padding: "12px", borderRadius: 12, border: `1px solid ${THEME.br}`, background: "transparent", color: THEME.tm, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Cancelar</button>}
         <button type="button" onClick={save} disabled={saving} style={{ flex: 2, padding: "14px", borderRadius: 12, border: "none", background: saving ? "#5A5A5A" : "linear-gradient(135deg,#FFD233,#FFE072)", color: "#050505", fontSize: 15, fontWeight: 800, cursor: saving ? "not-allowed" : "pointer", fontFamily: "Poppins, sans-serif" }}>
@@ -315,6 +407,9 @@ function Card({ order, onUpdate, onDelete }) {
   const [viewer, setViewer] = useState(null);
   const statusColors = STATUS_COLORS[order.status] || STATUS_COLORS.Novo;
   const images = order.imgs || [];
+  const parsedNotes = splitOrderNotes(order.obs);
+  const visibleObs = parsedNotes.visibleObs;
+  const extraItems = parsedNotes.extraItems;
 
   if (edit) {
     return <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 16, padding: 20, marginBottom: 10 }}><Form init={order} isEdit onSave={(updated) => { onUpdate(updated); setEdit(false); }} onCancel={() => setEdit(false)} /></div>;
@@ -345,7 +440,11 @@ function Card({ order, onUpdate, onDelete }) {
       ...(order.ping ? [`Pingente: ${order.pqtd}x ${order.pqual} (${order.pmetal})`] : []),
       "", "COMERCIAL:", `Valor: R$ ${order.valor || "—"} | ${order.pgto}${order.parc ? ` ${order.parc}` : ""}`,
       `Transp: ${order.transp || "—"} | Frete: R$ ${order.frete || "—"}`, `Confecção: ${formatDate(order.pconf)} | Entrega: ${formatDate(order.pent)}`,
-      ...(order.rastreio ? [`Rastreio: ${order.rastreio}`] : []), ...(order.obs ? ["", `Obs: ${order.obs}`] : []), "", `Status: ${order.status}`,
+      ...(order.rastreio ? [`Rastreio: ${order.rastreio}`] : []),
+      ...(extraItems.length ? ["", "PEÇAS ADICIONAIS:", ...extraItems.map((item, index) => `${index + 2}. ${item.tipo} · ${item.mat}${item.matd ? ` ${item.matd}` : ""} · ${item.tam} · ${item.cores || "sem cores"}${item.detalhes ? ` · ${item.detalhes}` : ""}`)] : []),
+      ...(visibleObs ? ["", `Obs: ${visibleObs}`] : []),
+      "",
+      `Status: ${order.status}`,
     ];
     await navigator.clipboard.writeText(lines.join("\n"));
   };
@@ -377,7 +476,24 @@ function Card({ order, onUpdate, onDelete }) {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 13 }}>
             {pairs.map(([key, value]) => <div key={key} style={{ background: THEME.soft, borderRadius: 10, padding: "8px 10px", border: `1px solid ${THEME.br}` }}><div style={{ fontSize: 10, fontWeight: 700, color: THEME.tl, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 2, fontFamily: "Poppins, sans-serif" }}>{key}</div><div style={{ fontSize: 13, color: THEME.tm, wordBreak: "break-word", fontFamily: "Poppins, sans-serif" }}>{value || "—"}</div></div>)}
           </div>
-          {order.obs && <div style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 13, color: THEME.tm, lineHeight: 1.6, fontFamily: "Poppins, sans-serif" }}><strong>Obs:</strong> {order.obs}</div>}
+          {extraItems.length > 0 && (
+            <div style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
+              <div style={{ ...labelStyle, marginBottom: 8, color: THEME.gold }}>Peças adicionais</div>
+              <div style={{ display: "grid", gap: 8 }}>
+                {extraItems.map((item, index) => (
+                  <div key={item.id || index} style={{ background: THEME.soft, border: `1px solid ${THEME.br}`, borderRadius: 10, padding: "10px 12px" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: THEME.tm, marginBottom: 4, fontFamily: "Poppins, sans-serif" }}>Peça {index + 2}</div>
+                    <div style={{ fontSize: 13, color: THEME.tm, lineHeight: 1.6, fontFamily: "Poppins, sans-serif" }}>
+                      {item.tipo} · {item.mat}{item.matd ? ` · ${item.matd}` : ""} · {item.tam}
+                      {item.cores ? ` · ${item.cores}` : ""}
+                      {item.detalhes ? ` · ${item.detalhes}` : ""}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {visibleObs && <div style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 13, color: THEME.tm, lineHeight: 1.6, fontFamily: "Poppins, sans-serif" }}><strong>Obs:</strong> {visibleObs}</div>}
           {images.length > 0 && <div style={{ marginBottom: 13 }}><div style={{ ...labelStyle, marginBottom: 7 }}>📷 Referências</div><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{images.map((image, index) => <div key={index} onClick={() => setViewer(image)} style={{ width: 70, height: 70, borderRadius: 8, overflow: "hidden", cursor: "zoom-in", border: `1px solid ${THEME.br}`, flexShrink: 0 }}><img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>)}</div></div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button type="button" onClick={copy} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.br}`, background: "transparent", color: THEME.tm, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>📋 Copiar</button>
