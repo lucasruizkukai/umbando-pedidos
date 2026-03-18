@@ -52,7 +52,8 @@ const EMPTY = {
 
 const inputStyle = { width: "100%", boxSizing: "border-box", border: "1px solid #D8D3C8", borderRadius: 12, padding: "11px 13px", fontSize: 14, fontFamily: "Poppins, sans-serif", background: "#FFFFFF", color: "#1F2937", outline: "none", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6)" };
 const labelStyle = { display: "block", fontSize: 11, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 5, fontFamily: "Poppins, sans-serif" };
-const ORDER_META_MARKER = "\n\n__ORDER_META__\n";
+const ORDER_META_MARKER = "__ORDER_META__";
+const LEGACY_EXTRA_ITEMS_MARKER = "__EXTRA_ITEMS__";
 
 function generateId() { return `o_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`; }
 function parseCurrency(value) {
@@ -126,19 +127,38 @@ function createExtraItem() {
 }
 
 function splitOrderNotes(rawObs) {
-  if (!rawObs || !rawObs.includes(ORDER_META_MARKER)) return { visibleObs: rawObs || "", extraItems: [], statusHistory: [], internalObs: "" };
-  const [visibleObs, rawMeta] = rawObs.split(ORDER_META_MARKER);
+  const source = rawObs || "";
+  const markerIndex = source.indexOf(ORDER_META_MARKER);
+  const legacyIndex = source.indexOf(LEGACY_EXTRA_ITEMS_MARKER);
+
+  if (markerIndex === -1 && legacyIndex === -1) {
+    return { visibleObs: source, extraItems: [], statusHistory: [], internalObs: "" };
+  }
+
+  if (markerIndex !== -1) {
+    const visibleObs = source.slice(0, markerIndex).trim();
+    const rawMeta = source.slice(markerIndex + ORDER_META_MARKER.length).trim();
+    try {
+      const parsed = JSON.parse(rawMeta);
+      if (Array.isArray(parsed)) return { visibleObs, extraItems: parsed, statusHistory: [], internalObs: "" };
+      return {
+        visibleObs,
+        extraItems: Array.isArray(parsed?.extraItems) ? parsed.extraItems : [],
+        statusHistory: Array.isArray(parsed?.statusHistory) ? parsed.statusHistory : [],
+        internalObs: parsed?.internalObs || "",
+      };
+    } catch {
+      return { visibleObs: source.replace(ORDER_META_MARKER, "").trim(), extraItems: [], statusHistory: [], internalObs: "" };
+    }
+  }
+
+  const visibleObs = source.slice(0, legacyIndex).trim();
+  const rawMeta = source.slice(legacyIndex + LEGACY_EXTRA_ITEMS_MARKER.length).trim();
   try {
     const parsed = JSON.parse(rawMeta);
-    if (Array.isArray(parsed)) return { visibleObs: visibleObs || "", extraItems: parsed, statusHistory: [], internalObs: "" };
-    return {
-      visibleObs: visibleObs || "",
-      extraItems: Array.isArray(parsed?.extraItems) ? parsed.extraItems : [],
-      statusHistory: Array.isArray(parsed?.statusHistory) ? parsed.statusHistory : [],
-      internalObs: parsed?.internalObs || "",
-    };
+    return { visibleObs, extraItems: Array.isArray(parsed) ? parsed : [], statusHistory: [], internalObs: "" };
   } catch {
-    return { visibleObs: rawObs || "", extraItems: [], statusHistory: [], internalObs: "" };
+    return { visibleObs: source.replace(LEGACY_EXTRA_ITEMS_MARKER, "").trim(), extraItems: [], statusHistory: [], internalObs: "" };
   }
 }
 
@@ -148,7 +168,9 @@ function buildOrderNotes(visibleObs, extraItems, statusHistory, internalObs) {
   const validHistory = (statusHistory || []).filter((item) => item?.status && item?.at);
   const cleanInternalObs = internalObs?.trim() || "";
   if (!validItems.length && !validHistory.length && !cleanInternalObs) return cleanObs;
-  return `${cleanObs}${ORDER_META_MARKER}${JSON.stringify({ extraItems: validItems, statusHistory: validHistory, internalObs: cleanInternalObs })}`.trim();
+  return [cleanObs, ORDER_META_MARKER, JSON.stringify({ extraItems: validItems, statusHistory: validHistory, internalObs: cleanInternalObs })]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 function splitContact(value) {
