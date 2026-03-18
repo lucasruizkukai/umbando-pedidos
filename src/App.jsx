@@ -331,7 +331,7 @@ function Section({ title, children }) {
   return <div style={{ marginBottom: 22 }}><div style={{ fontSize: 12, fontWeight: 800, color: THEME.primary, letterSpacing: 0.9, marginBottom: 12, paddingBottom: 8, borderBottom: `1px solid ${THEME.br}`, fontFamily: "Poppins, sans-serif" }}>{title}</div>{children}</div>;
 }
 
-function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channels = CHANNELS, shippers = SHIPPERS, sizes = SIZES }) {
+function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channels = CHANNELS, shippers = SHIPPERS, sizes = SIZES, isMobile = false }) {
   const parsedInit = splitOrderNotes(init?.obs);
   const parsedContact = splitContact(init?.contato);
   const [form, setForm] = useState({ ...EMPTY, ...(init || {}), contato: parsedContact.contato, instagram: parsedContact.instagram, obs: parsedInit.visibleObs, obsInterna: parsedInit.internalObs || "" });
@@ -344,6 +344,9 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
   const detailOptions = MATERIAL_DETAILS[form.mat] || [];
+  const twoCol = { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 };
+  const threeCol = { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: 10 };
+  const fourCol = { display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: 10 };
 
   const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
   const handleStatusChange = (value) => {
@@ -445,7 +448,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
       )}
 
       <Section title="👤 Cliente">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={twoCol}>
           <Field label="Nome *"><input list="clientes-sugestoes" value={form.nome} onChange={(event) => setField("nome", event.target.value)} style={inputStyle} placeholder="Nome completo" /></Field>
           <Field label="Contato"><input value={form.contato} onChange={(event) => setField("contato", formatPhone(event.target.value))} style={inputStyle} placeholder="(11) 99999-9999" /></Field>
         </div>
@@ -470,7 +473,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
         {form.tipo === "Brajá" && (
           <div style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 14, padding: "13px 15px", marginBottom: 13 }}>
             <div style={{ ...labelStyle, marginBottom: 11 }}>🧿 Firmas</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+            <div style={threeCol}>
               <Field label="Quantidade"><input value={form.fqtd} onChange={(event) => setField("fqtd", event.target.value)} style={inputStyle} placeholder="Ex: 7" /></Field>
               <Field label="Cor"><input value={form.fcor} onChange={(event) => setField("fcor", event.target.value)} style={inputStyle} placeholder="Ex: rajada" /></Field>
               <Field label="Formato">
@@ -482,7 +485,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
             </div>
           </div>
         )}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={twoCol}>
           <Field label="Fio"><Segmented opts={["Nylon", "Cordonê"]} val={form.fio} onChange={(value) => setField("fio", value)} /></Field>
           <Field label="Tamanho">
             <select value={form.tam} onChange={(event) => setField("tam", event.target.value)} style={inputStyle}>
@@ -490,7 +493,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
             </select>
           </Field>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={twoCol}>
           <Field label="Fechamento"><Segmented opts={["Com firma", "Sem firma"]} val={form.fech} onChange={(value) => setField("fech", value)} /></Field>
           <Field label="Enviar"><Segmented opts={["Fechado", "Aberto"]} val={form.env} onChange={(value) => setField("env", value)} /></Field>
         </div>
@@ -500,7 +503,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
             <span style={{ fontSize: 14, fontWeight: 700, color: THEME.tm, fontFamily: "Poppins, sans-serif" }}>Tem Pingente?</span>
           </label>
           {form.ping && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+            <div style={threeCol}>
               <Field label="Quantidade"><input value={form.pqtd} onChange={(event) => setField("pqtd", event.target.value)} style={inputStyle} placeholder="Ex: 1" /></Field>
               <Field label="Quais pingentes" full><textarea value={form.pqual} onChange={(event) => setField("pqual", event.target.value)} style={{ ...inputStyle, minHeight: 72, resize: "vertical", lineHeight: 1.6 }} placeholder={"Ex:\n1 tridente\n1 firma\n1 espada"} /></Field>
               <Field label="Metal"><Segmented opts={["Prateado", "Dourado"]} val={form.pmetal} onChange={(value) => setField("pmetal", value)} small /></Field>
@@ -510,7 +513,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
       </Section>
 
       <Section title="💰 Comercial e Envio">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={twoCol}>
           <Field label="Valor Total (R$)"><input value={form.valor} onChange={(event) => setField("valor", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 150,00" /></Field>
           <Field label="Pagamento"><Segmented opts={["Pix", "Cartão"]} val={form.pgto} onChange={(value) => setField("pgto", value)} /></Field>
         </div>
@@ -536,7 +539,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
             {formatCurrency(getTotal(form))}
           </div>
         </Field>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={twoCol}>
           <Field label="Transportadora">
             <select value={form.transp} onChange={(event) => setField("transp", event.target.value)} style={inputStyle}>
               <option value="">Selecionar...</option>
@@ -545,7 +548,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
           </Field>
           <Field label="Frete (R$)"><input value={form.frete} onChange={(event) => setField("frete", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 25,00" /></Field>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={twoCol}>
           <Field label="Confecção até"><input type="date" value={form.pconf} onChange={(event) => setField("pconf", event.target.value)} style={inputStyle} /></Field>
           <Field label="Entrega Estimada"><input type="date" value={form.pent} onChange={(event) => setField("pent", event.target.value)} style={inputStyle} /></Field>
         </div>
@@ -560,7 +563,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
           <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(event) => handleImages(event.target.files)} />
         </div>
         {images.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: 8 }}>
             {images.map((image, index) => (
               <div key={index} style={{ position: "relative", aspectRatio: "1", borderRadius: 8, overflow: "hidden", border: `1px solid ${THEME.br}` }}>
                 <img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -582,7 +585,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
       </Section>
 
       <Section title="💼 Resumo Financeiro">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+        <div style={fourCol}>
           {[
             ["Produto", formatCurrency(parseCurrency(form.valor))],
             ["Frete", formatCurrency(parseCurrency(form.frete))],
@@ -615,7 +618,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
                   Remover
                 </button>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={twoCol}>
                 <Field label="Tipo da peça">
                   <Segmented
                     opts={["Guia", "Brajá"]}
@@ -640,7 +643,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
                   />
                 </Field>
               )}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={twoCol}>
                 <Field label="Cores">
                   <input value={item.cores} onChange={(event) => setExtraItems((prev) => prev.map((extra) => (extra.id === item.id ? { ...extra, cores: event.target.value } : extra)))} style={inputStyle} placeholder="Ex: preto e amarelo" />
                 </Field>
@@ -675,7 +678,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
   );
 }
 
-function Card({ order, onUpdate, onDelete, onDuplicate, onToast }) {
+function Card({ order, onUpdate, onDelete, onDuplicate, onToast, isMobile = false }) {
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(false);
   const [viewer, setViewer] = useState(null);
@@ -694,7 +697,7 @@ function Card({ order, onUpdate, onDelete, onDuplicate, onToast }) {
   const trackingMessage = buildTrackingMessage(order);
 
   if (edit) {
-    return <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 18, padding: 20, marginBottom: 10, boxShadow: "0 18px 40px rgba(31,41,55,0.08)" }}><Form init={order} isEdit onSave={(updated) => { onUpdate(updated); setEdit(false); }} onCancel={() => setEdit(false)} /></div>;
+    return <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 18, padding: 20, marginBottom: 10, boxShadow: "0 18px 40px rgba(31,41,55,0.08)" }}><Form init={order} isEdit isMobile={isMobile} onSave={(updated) => { onUpdate(updated); setEdit(false); }} onCancel={() => setEdit(false)} /></div>;
   }
 
   const pairs = [
@@ -797,7 +800,7 @@ function Card({ order, onUpdate, onDelete, onDuplicate, onToast }) {
       </div>
       {open && (
         <div style={{ padding: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 13 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap: 8, marginBottom: 13 }}>
             {pairs.map(([key, value]) => <div key={key} style={{ background: THEME.soft, borderRadius: 12, padding: "9px 11px", border: `1px solid ${THEME.br}` }}><div style={{ fontSize: 10, fontWeight: 700, color: THEME.tl, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 2, fontFamily: "Poppins, sans-serif" }}>{key}</div><div style={{ fontSize: 13, color: THEME.tm, wordBreak: "break-word", whiteSpace: "pre-wrap", fontFamily: "Poppins, sans-serif" }}>{value || "—"}</div></div>)}
           </div>
           {parsedNotes.statusHistory?.length > 0 && (
@@ -864,7 +867,7 @@ function Card({ order, onUpdate, onDelete, onDuplicate, onToast }) {
             </div>
           </div>
           {images.length > 0 && <div style={{ marginBottom: 13 }}><div style={{ ...labelStyle, marginBottom: 7 }}>📷 Referências</div><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{images.map((image, index) => <div key={index} onClick={() => setViewer(image)} style={{ width: 70, height: 70, borderRadius: 8, overflow: "hidden", cursor: "zoom-in", border: `1px solid ${THEME.br}`, flexShrink: 0 }}><img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>)}</div></div>}
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <div style={{ display: "flex", gap: 8, justifyContent: isMobile ? "flex-start" : "flex-end", flexWrap: "wrap" }}>
             {order.status !== "Postado" && <button type="button" onClick={() => updateStatus("Postado")} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.primary}`, background: THEME.primarySoft, color: THEME.primary, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Marcar postado</button>}
             {order.status !== "Concluído" && <button type="button" onClick={() => updateStatus("Concluído")} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.gold}`, background: "#FFF9F0", color: THEME.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Concluir</button>}
             <button type="button" onClick={copy} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.br}`, background: "transparent", color: THEME.tm, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>📋 Copiar</button>
@@ -881,6 +884,7 @@ function Card({ order, onUpdate, onDelete, onDuplicate, onToast }) {
 
 export default function App() {
   const [tab, setTab] = useState(() => window.localStorage.getItem("umbando_tab") || "novo");
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 760);
   const [orders, setOrders] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [filter, setFilter] = useState(() => window.localStorage.getItem("umbando_filter") || "Todos");
@@ -898,6 +902,11 @@ export default function App() {
   const configuredChannels = parseOptionsInput(customChannelsText, CHANNELS);
   const configuredShippers = parseOptionsInput(customShippersText, SHIPPERS);
   const configuredSizes = parseOptionsInput(customSizesText, SIZES);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 760);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   useEffect(() => {
     supabase.from("pedidos").select("*").order("criado_em", { ascending: false }).then(({ data, error }) => {
       if (!error && data) setOrders(data);
@@ -1002,11 +1011,11 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: `linear-gradient(180deg, #FBFAF7 0%, ${THEME.bg} 100%)`, fontFamily: "Poppins, sans-serif", color: THEME.tm }}>
       <div style={{ background: "linear-gradient(180deg,#FFFFFF,#F8F6F1)", boxShadow: "0 14px 30px rgba(31,41,55,0.06)", borderBottom: `1px solid ${THEME.br}` }}>
-        <div style={{ maxWidth: 800, margin: "0 auto", padding: "18px 20px 0" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+        <div style={{ maxWidth: 1120, margin: "0 auto", padding: "18px 20px 0" }}>
+          <div style={{ display: "flex", alignItems: isMobile ? "flex-start" : "center", flexWrap: "wrap", gap: 14, marginBottom: 16 }}>
             <div style={{ fontSize: 26 }}>✨</div>
-            <div><div style={{ fontSize: 22, fontWeight: 800, color: THEME.tm, letterSpacing: 0.2 }}>Umbando · Pedidos</div><div style={{ fontSize: 12, color: THEME.primary, fontWeight: 600 }}>Gerenciador de encomendas personalizadas</div></div>
-            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>{[["Andamento", inProgress, THEME.primary], ["Atrasados", overdueCount, "#C2410C"], ["Mês", formatCurrency(revenueMonth), THEME.tm]].map(([label, value, color]) => <div key={label} style={{ background: "#FFFFFF", border: `1px solid ${THEME.br}`, borderRadius: 14, padding: "7px 12px", textAlign: "center", minWidth: 72, boxShadow: "0 8px 22px rgba(31,41,55,0.05)" }}><div style={{ fontSize: 18, fontWeight: 800, color, fontFamily: "Poppins, sans-serif" }}>{value}</div><div style={{ fontSize: 10, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>{label}</div></div>)}</div>
+            <div style={{ minWidth: 0, flex: "1 1 260px" }}><div style={{ fontSize: 22, fontWeight: 800, color: THEME.tm, letterSpacing: 0.2 }}>{brandName}</div><div style={{ fontSize: 12, color: THEME.primary, fontWeight: 600 }}>{brandSubtitle}</div></div>
+            <div style={{ marginLeft: isMobile ? 0 : "auto", width: isMobile ? "100%" : "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>{[["Andamento", inProgress, THEME.primary], ["Atrasados", overdueCount, "#C2410C"], ["Mês", formatCurrency(revenueMonth), THEME.tm]].map(([label, value, color]) => <div key={label} style={{ background: "#FFFFFF", border: `1px solid ${THEME.br}`, borderRadius: 14, padding: "7px 12px", textAlign: "center", minWidth: isMobile ? 88 : 72, flex: isMobile ? "1 1 88px" : "0 0 auto", boxShadow: "0 8px 22px rgba(31,41,55,0.05)" }}><div style={{ fontSize: 18, fontWeight: 800, color, fontFamily: "Poppins, sans-serif" }}>{value}</div><div style={{ fontSize: 10, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>{label}</div></div>)}</div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
             {channelCounts.map(([label, value]) => (
@@ -1015,10 +1024,10 @@ export default function App() {
               </div>
             ))}
           </div>
-          <div style={{ display: "flex", gap: 6 }}>{[["novo", "➕ Novo"], ["lista", `📦 Pedidos (${orders.length})`], ["kanban", "📊 Kanban"]].map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} style={{ background: tab === key ? THEME.primary : "#FFFFFF", color: tab === key ? "#FFFFFF" : THEME.tl, border: `1px solid ${tab === key ? THEME.primary : THEME.br}`, padding: "10px 16px", fontSize: 13, fontWeight: tab === key ? 700 : 500, cursor: "pointer", borderRadius: "14px 14px 0 0", fontFamily: "Poppins, sans-serif", boxShadow: tab === key ? "0 10px 24px rgba(78,95,77,0.16)" : "none" }}>{label}</button>)}</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{[["novo", "➕ Novo"], ["lista", `📦 Pedidos (${orders.length})`], ["kanban", "📊 Kanban"], ["agenda", "📆 Agenda"], ["config", "⚙️ Config"]].map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} style={{ background: tab === key ? THEME.primary : "#FFFFFF", color: tab === key ? "#FFFFFF" : THEME.tl, border: `1px solid ${tab === key ? THEME.primary : THEME.br}`, padding: "10px 16px", fontSize: 13, fontWeight: tab === key ? 700 : 500, cursor: "pointer", borderRadius: "14px 14px 0 0", fontFamily: "Poppins, sans-serif", boxShadow: tab === key ? "0 10px 24px rgba(78,95,77,0.16)" : "none" }}>{label}</button>)}</div>
         </div>
       </div>
-      <div style={{ maxWidth: 800, margin: "0 auto", padding: "22px 16px" }}>
+      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "22px 16px" }}>
         {toast && (
           <div style={{ position: "sticky", top: 12, zIndex: 20, marginBottom: 14 }}>
             <div style={{ background: THEME.primary, color: "#FFFFFF", borderRadius: 14, padding: "12px 14px", fontSize: 14, fontWeight: 600, boxShadow: "0 18px 40px rgba(78,95,77,0.22)" }}>
@@ -1027,7 +1036,7 @@ export default function App() {
           </div>
         )}
         {!loaded ? <div style={{ textAlign: "center", padding: 80, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>⏳ Carregando pedidos...</div> : <>
-          {tab === "novo" && <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 22, padding: "22px 20px", boxShadow: "0 22px 60px rgba(31,41,55,0.08)" }}><Form init={draftOrder} customerSuggestions={customerSuggestions} onSave={(order) => { saveOrder(order); setTab("lista"); }} onCancel={draftOrder ? () => { setDraftOrder(null); setTab("lista"); } : undefined} /></div>}
+          {tab === "novo" && <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 22, padding: "22px 20px", boxShadow: "0 22px 60px rgba(31,41,55,0.08)" }}><Form init={draftOrder} customerSuggestions={customerSuggestions} channels={configuredChannels} shippers={configuredShippers} sizes={configuredSizes} isMobile={isMobile} onSave={(order) => { saveOrder(order); setTab("lista"); }} onCancel={draftOrder ? () => { setDraftOrder(null); setTab("lista"); } : undefined} /></div>}
           {tab === "lista" && (
             <div>
               <div style={{ marginBottom: 14, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1043,11 +1052,50 @@ export default function App() {
                   </button>
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{["Todos", ...STATUS_LIST].map((status) => { const colors = status !== "Todos" ? STATUS_COLORS[status] : null; return <button key={status} type="button" onClick={() => setFilter(status)} style={{ background: filter === status ? THEME.primary : colors?.bg || "#FFFFFF", color: filter === status ? "#FFFFFF" : colors?.cl || THEME.tm, border: `1px solid ${filter === status ? THEME.primary : THEME.br}`, borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>{status} ({status === "Todos" ? orders.length : counts[status] || 0})</button>; })}</div>
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <div style={{ ...labelStyle, marginBottom: 6 }}>Canal</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{["Todos", ...configuredChannels].map((channel) => <button key={channel} type="button" onClick={() => setChannelFilter(channel)} style={{ background: channelFilter === channel ? THEME.primary : "#FFFFFF", color: channelFilter === channel ? "#FFFFFF" : THEME.tm, border: `1px solid ${channelFilter === channel ? THEME.primary : THEME.br}`, borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>{channel}</button>)}</div>
+                  </div>
+                  <div>
+                    <div style={{ ...labelStyle, marginBottom: 6 }}>Ordenação</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{[["recentes", "Recentes"], ["prazo", "Prazo"], ["valor", "Maior valor"], ["cliente", "Cliente"]].map(([key, label]) => <button key={key} type="button" onClick={() => setSortBy(key)} style={{ background: sortBy === key ? THEME.primary : "#FFFFFF", color: sortBy === key ? "#FFFFFF" : THEME.tm, border: `1px solid ${sortBy === key ? THEME.primary : THEME.br}`, borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>{label}</button>)}</div>
+                  </div>
+                </div>
               </div>
-              {filteredOrders.length === 0 ? <div style={{ textAlign: "center", padding: "60px 20px", background: THEME.card, borderRadius: 18, border: `1px dashed ${THEME.br}`, color: THEME.tl }}><div style={{ fontSize: 34, marginBottom: 10 }}>🔮</div><div style={{ fontSize: 16, fontWeight: 700, color: THEME.tm, marginBottom: 6, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Nenhum pedido ainda" : "Nenhum resultado"}</div><div style={{ fontSize: 13, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Crie o primeiro na aba Novo" : "Tente outros filtros"}</div></div> : filteredOrders.map((order) => <Card key={order.id} order={order} onUpdate={updateOrder} onDelete={deleteOrder} onDuplicate={duplicateOrder} onToast={showToast} />)}
+              {filteredOrders.length === 0 ? <div style={{ textAlign: "center", padding: "60px 20px", background: THEME.card, borderRadius: 18, border: `1px dashed ${THEME.br}`, color: THEME.tl }}><div style={{ fontSize: 34, marginBottom: 10 }}>🔮</div><div style={{ fontSize: 16, fontWeight: 700, color: THEME.tm, marginBottom: 6, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Nenhum pedido ainda" : "Nenhum resultado"}</div><div style={{ fontSize: 13, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Crie o primeiro na aba Novo" : "Tente outros filtros"}</div></div> : filteredOrders.map((order) => <Card key={order.id} order={order} onUpdate={updateOrder} onDelete={deleteOrder} onDuplicate={duplicateOrder} onToast={showToast} isMobile={isMobile} />)}
             </div>
           )}
           {tab === "kanban" && <div style={{ overflowX: "auto", paddingBottom: 8 }}><div style={{ display: "flex", gap: 10, minWidth: "max-content" }}>{STATUS_LIST.map((status) => { const colors = STATUS_COLORS[status]; const list = sortedKanbanOrders(status); return <div key={status} style={{ width: 195, flexShrink: 0 }}><div style={{ background: colors.bg, color: colors.cl, padding: "8px 12px", borderRadius: "14px 14px 0 0", fontWeight: 700, fontSize: 12, display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "Poppins, sans-serif", border: `1px solid ${THEME.br}` }}><span>{colors.em} {status}</span><span style={{ background: "rgba(255,255,255,0.65)", borderRadius: 20, padding: "2px 8px" }}>{list.length}</span></div><div style={{ background: "#FCFBF8", border: `1px solid ${THEME.br}`, borderTop: "none", borderRadius: "0 0 14px 14px", padding: 8, minHeight: 100 }}>{list.length === 0 ? <div style={{ textAlign: "center", padding: "24px 10px", color: THEME.tl, fontSize: 12, fontFamily: "Poppins, sans-serif" }}>Vazio</div> : list.map((order) => <div key={order.id} onClick={() => { setSearch(order.nome); setFilter("Todos"); setTab("lista"); }} style={{ background: isOverdue(order) ? "#FFF4E8" : THEME.card, border: `1px solid ${isOverdue(order) ? "#FDBA74" : THEME.br}`, borderRadius: 12, padding: "10px 12px", marginBottom: 8, cursor: "pointer", boxShadow: "0 8px 18px rgba(31,41,55,0.05)" }}><div style={{ fontWeight: 700, fontSize: 13, color: THEME.tm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "Poppins, sans-serif" }}>{order.nome || "Cliente"}</div><div style={{ fontSize: 11, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>{order.tipo}{order.tipo === "Brajá" ? ` ${order.fios}f` : ""} · {order.mat} · {order.tam}</div>{order.pent && <div style={{ fontSize: 10, color: isOverdue(order) ? "#C2410C" : THEME.tl, marginTop: 4, fontFamily: "Poppins, sans-serif" }}>{isOverdue(order) ? "Atrasado: " : "Entrega: "}{formatDate(order.pent)}</div>}{order.valor && <div style={{ fontSize: 12, fontWeight: 700, color: THEME.primary, marginTop: 4, fontFamily: "Poppins, sans-serif" }}>{formatCurrency(getTotal(order))}</div>}{order.urg && <div style={{ fontSize: 10, color: THEME.gold, fontWeight: 700, marginTop: 2, fontFamily: "Poppins, sans-serif" }}>⚡ URGENTE</div>}</div>)}</div></div>; })}</div></div>}
+          {tab === "agenda" && (
+            <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 22, padding: "22px 20px", boxShadow: "0 22px 60px rgba(31,41,55,0.08)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: THEME.tm }}>Agenda de entregas</div>
+                  <div style={{ fontSize: 13, color: THEME.tl }}>Visual rápido por prazo de confecção e entrega.</div>
+                </div>
+                <div style={{ ...labelStyle, marginBottom: 0 }}>{agendaOrders.length} com data</div>
+              </div>
+              {agendaOrders.length === 0 ? <div style={{ textAlign: "center", padding: "40px 20px", background: THEME.panel, borderRadius: 18, border: `1px dashed ${THEME.br}`, color: THEME.tl }}>Nenhum pedido com prazo definido ainda.</div> : <div style={{ display: "grid", gap: 10 }}>{agendaOrders.map((order) => <div key={order.id} style={{ background: isOverdue(order) ? "#FFF4E8" : THEME.panel, border: `1px solid ${isOverdue(order) ? "#FDBA74" : THEME.br}`, borderRadius: 16, padding: "14px 16px", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr .8fr .8fr auto", gap: 10, alignItems: "center" }}><div><div style={{ fontSize: 15, fontWeight: 700, color: THEME.tm }}>{order.nome}</div><div style={{ fontSize: 12, color: THEME.tl }}>{order.tipo} · {order.mat} · {order.tam}</div></div><div><div style={{ ...labelStyle, marginBottom: 4 }}>Confecção</div><div style={{ fontSize: 13, color: THEME.tm }}>{formatDate(order.pconf)}</div></div><div><div style={{ ...labelStyle, marginBottom: 4 }}>Entrega</div><div style={{ fontSize: 13, color: THEME.tm }}>{formatDate(order.pent)}</div></div><div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: isMobile ? "flex-start" : "flex-end" }}><div style={{ background: isOverdue(order) ? "#F97316" : THEME.primarySoft, color: isOverdue(order) ? "#FFFFFF" : THEME.primary, borderRadius: 999, padding: "5px 10px", fontSize: 12, fontWeight: 700 }}>{getDueLabel(order) || "Sem alerta"}</div><button type="button" onClick={() => { setSearch(order.nome); setFilter("Todos"); setTab("lista"); }} style={{ border: `1px solid ${THEME.br}`, background: "#FFFFFF", color: THEME.tm, borderRadius: 10, padding: "6px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Abrir pedido</button></div></div>)}</div>}
+            </div>
+          )}
+          {tab === "config" && (
+            <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 22, padding: "22px 20px", boxShadow: "0 22px 60px rgba(31,41,55,0.08)" }}>
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: THEME.tm, marginBottom: 4 }}>Cadastro personalizável</div>
+                <div style={{ fontSize: 13, color: THEME.tl }}>Essas preferências ficam salvas no seu navegador.</div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 18 }}>
+                <Field label="Nome da marca"><input value={brandName} onChange={(event) => setBrandName(event.target.value)} style={inputStyle} placeholder="Nome que aparece no topo" /></Field>
+                <Field label="Subtítulo"><input value={brandSubtitle} onChange={(event) => setBrandSubtitle(event.target.value)} style={inputStyle} placeholder="Frase curta da sua marca" /></Field>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: 12 }}>
+                <Field label="Canais" full={isMobile}><textarea value={customChannelsText} onChange={(event) => setCustomChannelsText(event.target.value)} style={{ ...inputStyle, minHeight: 140, resize: "vertical", lineHeight: 1.6 }} placeholder={"Um item por linha\nWhatsApp\nInstagram DM\nComentário"} /></Field>
+                <Field label="Transportadoras" full={isMobile}><textarea value={customShippersText} onChange={(event) => setCustomShippersText(event.target.value)} style={{ ...inputStyle, minHeight: 140, resize: "vertical", lineHeight: 1.6 }} placeholder={"Um item por linha\nCorreios\nLoggi"} /></Field>
+                <Field label="Tamanhos" full={isMobile}><textarea value={customSizesText} onChange={(event) => setCustomSizesText(event.target.value)} style={{ ...inputStyle, minHeight: 140, resize: "vertical", lineHeight: 1.6 }} placeholder={"Um item por linha\n40cm\n50cm\n60cm"} /></Field>
+              </div>
+            </div>
+          )}
         </>}
       </div>
     </div>
