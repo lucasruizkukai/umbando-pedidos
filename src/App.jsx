@@ -53,7 +53,7 @@ const EMPTY = {
 
 const inputStyle = { width: "100%", boxSizing: "border-box", border: "1px solid #D8D3C8", borderRadius: 12, padding: "11px 13px", fontSize: 14, fontFamily: "Poppins, sans-serif", background: "#FFFFFF", color: "#1F2937", outline: "none", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6)" };
 const labelStyle = { display: "block", fontSize: 11, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 5, fontFamily: "Poppins, sans-serif" };
-const EXTRA_ITEMS_MARKER = "\n\n__EXTRA_ITEMS__\n";
+const ORDER_META_MARKER = "\n\n__ORDER_META__\n";
 
 function generateId() { return `o_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`; }
 function parseCurrency(value) {
@@ -81,6 +81,17 @@ function getDueTimestamp(order) {
   return Number.isFinite(timestamp) ? timestamp : Number.MAX_SAFE_INTEGER;
 }
 
+function isDueSoon(order) {
+  const due = order.pent || order.pconf;
+  if (!due || ["Concluído", "Cancelado"].includes(order.status)) return false;
+  const dueDate = new Date(due);
+  const today = new Date();
+  dueDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.round((dueDate.getTime() - today.getTime()) / 86400000);
+  return diff >= 0 && diff <= 2;
+}
+
 function isOverdue(order) {
   const due = order.pent || order.pconf;
   if (!due || ["Concluído", "Cancelado"].includes(order.status)) return false;
@@ -96,21 +107,27 @@ function createExtraItem() {
 }
 
 function splitOrderNotes(rawObs) {
-  if (!rawObs || !rawObs.includes(EXTRA_ITEMS_MARKER)) return { visibleObs: rawObs || "", extraItems: [] };
-  const [visibleObs, rawItems] = rawObs.split(EXTRA_ITEMS_MARKER);
+  if (!rawObs || !rawObs.includes(ORDER_META_MARKER)) return { visibleObs: rawObs || "", extraItems: [], statusHistory: [] };
+  const [visibleObs, rawMeta] = rawObs.split(ORDER_META_MARKER);
   try {
-    const parsed = JSON.parse(rawItems);
-    return { visibleObs: visibleObs || "", extraItems: Array.isArray(parsed) ? parsed : [] };
+    const parsed = JSON.parse(rawMeta);
+    if (Array.isArray(parsed)) return { visibleObs: visibleObs || "", extraItems: parsed, statusHistory: [] };
+    return {
+      visibleObs: visibleObs || "",
+      extraItems: Array.isArray(parsed?.extraItems) ? parsed.extraItems : [],
+      statusHistory: Array.isArray(parsed?.statusHistory) ? parsed.statusHistory : [],
+    };
   } catch {
-    return { visibleObs: rawObs || "", extraItems: [] };
+    return { visibleObs: rawObs || "", extraItems: [], statusHistory: [] };
   }
 }
 
-function buildOrderNotes(visibleObs, extraItems) {
+function buildOrderNotes(visibleObs, extraItems, statusHistory) {
   const cleanObs = visibleObs?.trim() || "";
   const validItems = (extraItems || []).filter((item) => item && (item.cores || item.detalhes || item.mat || item.tipo));
-  if (!validItems.length) return cleanObs;
-  return `${cleanObs}${EXTRA_ITEMS_MARKER}${JSON.stringify(validItems)}`.trim();
+  const validHistory = (statusHistory || []).filter((item) => item?.status && item?.at);
+  if (!validItems.length && !validHistory.length) return cleanObs;
+  return `${cleanObs}${ORDER_META_MARKER}${JSON.stringify({ extraItems: validItems, statusHistory: validHistory })}`.trim();
 }
 
 function splitContact(value) {
@@ -127,6 +144,64 @@ function buildContact(contato, instagram) {
   if (cleanContato && cleanInstagram) return `${cleanContato} | @${cleanInstagram}`;
   if (cleanInstagram) return `@${cleanInstagram}`;
   return cleanContato;
+}
+
+function buildClientSummary(order, extraItems = [], visibleObs = "") {
+  const contact = splitContact(order.contato);
+  const lines = [
+    "✨ *Resumo do seu pedido*",
+    "",
+    `Olá, ${order.nome}. Separei o fechamento do seu pedido:`,
+    "",
+    "📿 *Peça principal*",
+    `${order.tipo}${order.tipo === "Brajá" ? ` ${order.fios} fios` : ""}`,
+    `Material: ${order.mat}${order.matd ? ` (${order.matd})` : ""}`,
+    `Cores: ${order.cores || "Não informado"}`,
+    `Tamanho: ${order.tam}`,
+    `Fio: ${order.fio}`,
+    `Fechamento: ${order.fech}`,
+    `Envio da peça: ${order.env}`,
+    ...(order.tipo === "Brajá" ? [`Finalização: ${order.fin}`, `Firmas: ${order.fqtd ? `${order.fqtd}x ${order.ffmt || ""} ${order.fcor || ""}`.trim() : "Não informado"}`] : []),
+    ...(order.ping ? [`Pingentes: ${order.pqual || "Não informado"}${order.pmetal ? ` (${order.pmetal})` : ""}`] : []),
+    ...(extraItems.length ? ["", "🧩 *Peças adicionais*", ...extraItems.map((item, index) => `${index + 2}. ${item.tipo} • ${item.mat}${item.matd ? ` ${item.matd}` : ""} • ${item.tam}${item.cores ? ` • ${item.cores}` : ""}${item.detalhes ? ` • ${item.detalhes}` : ""}`)] : []),
+    "",
+    "💰 *Pagamento e entrega*",
+    `Produto: ${formatCurrency(parseCurrency(order.valor))}`,
+    `Frete: ${formatCurrency(parseCurrency(order.frete))}`,
+    ...(order.urg ? [`Taxa de urgência: ${formatCurrency(parseCurrency(order.taxa))}`] : []),
+    ...(order.desconto ? ["Desconto Pix aplicado: 5%"] : []),
+    `Total final: ${formatCurrency(getTotal(order))}`,
+    `Pagamento: ${order.pgto}${order.parc ? ` ${order.parc}` : ""}`,
+    ...(order.transp ? [`Transportadora: ${order.transp}`] : []),
+    ...(order.pconf ? [`Previsão de confecção: ${formatDate(order.pconf)}`] : []),
+    ...(order.pent ? [`Previsão de entrega: ${formatDate(order.pent)}`] : []),
+    ...(visibleObs ? ["", `📝 Observações: ${visibleObs}`] : []),
+    "",
+    "Se estiver tudo certo, seguimos com a produção 🤍",
+  ];
+  if (contact.instagram && order.canal === "Instagram DM") {
+    lines.splice(3, 0, `Instagram: @${contact.instagram}`);
+  }
+  return lines.join("\n");
+}
+
+function formatPhone(value) {
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 2) return digits ? `(${digits}` : "";
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+function formatCurrencyInput(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return "";
+  const cents = Number(digits) / 100;
+  return cents.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function getStatusHistoryEntry(status) {
+  return { id: generateId(), status, at: new Date().toISOString() };
 }
 function formatDate(date) {
   if (!date) return "—";
@@ -172,6 +247,7 @@ function Form({ init, onSave, onCancel, isEdit }) {
   const [form, setForm] = useState({ ...EMPTY, ...(init || {}), contato: parsedContact.contato, instagram: parsedContact.instagram, obs: parsedInit.visibleObs });
   const [images, setImages] = useState(init?.imgs || []);
   const [extraItems, setExtraItems] = useState(parsedInit.extraItems);
+  const [statusHistory, setStatusHistory] = useState(parsedInit.statusHistory.length ? parsedInit.statusHistory : [getStatusHistoryEntry((init || EMPTY).status)]);
   const [mode, setMode] = useState("manual");
   const [conversation, setConversation] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -186,6 +262,16 @@ function Form({ init, onSave, onCancel, isEdit }) {
     if (remaining <= 0) return;
     const compressed = await Promise.all(Array.from(files).slice(0, remaining).map(compressImage));
     setImages((prev) => [...prev, ...compressed].slice(0, 4));
+  };
+
+  const moveImage = (index, direction) => {
+    const target = index + direction;
+    if (target < 0 || target >= images.length) return;
+    setImages((prev) => {
+      const clone = [...prev];
+      [clone[index], clone[target]] = [clone[target], clone[index]];
+      return clone;
+    });
   };
 
   const extractWithAI = async () => {
@@ -219,7 +305,7 @@ function Form({ init, onSave, onCancel, isEdit }) {
       ...form,
       id,
       contato: buildContact(form.contato, form.instagram),
-      obs: buildOrderNotes(form.obs, extraItems),
+      obs: buildOrderNotes(form.obs, extraItems, statusHistory),
       imgs: images,
       criado_em: form.criado_em || new Date().toISOString(),
       upd: new Date().toISOString(),
@@ -266,7 +352,7 @@ function Form({ init, onSave, onCancel, isEdit }) {
       <Section title="👤 Cliente">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Field label="Nome *"><input value={form.nome} onChange={(event) => setField("nome", event.target.value)} style={inputStyle} placeholder="Nome completo" /></Field>
-          <Field label="Contato"><input value={form.contato} onChange={(event) => setField("contato", event.target.value)} style={inputStyle} placeholder="(11) 99999-9999" /></Field>
+          <Field label="Contato"><input value={form.contato} onChange={(event) => setField("contato", formatPhone(event.target.value))} style={inputStyle} placeholder="(11) 99999-9999" /></Field>
         </div>
         <Field label="Instagram @"><input value={form.instagram || ""} onChange={(event) => setField("instagram", event.target.value.replace(/^@+/, ""))} style={inputStyle} placeholder="usuario" /></Field>
         <Field label="Canal"><Segmented opts={CHANNELS} val={form.canal} onChange={(value) => setField("canal", value)} /></Field>
@@ -327,7 +413,7 @@ function Form({ init, onSave, onCancel, isEdit }) {
 
       <Section title="💰 Comercial e Envio">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Field label="Valor Total (R$)"><input value={form.valor} onChange={(event) => setField("valor", event.target.value)} style={inputStyle} placeholder="Ex: 150,00" /></Field>
+          <Field label="Valor Total (R$)"><input value={form.valor} onChange={(event) => setField("valor", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 150,00" /></Field>
           <Field label="Pagamento"><Segmented opts={["Pix", "Cartão"]} val={form.pgto} onChange={(value) => setField("pgto", value)} /></Field>
         </div>
         {form.pgto === "Cartão" && (
@@ -346,7 +432,7 @@ function Form({ init, onSave, onCancel, isEdit }) {
             </label>
           ))}
         </div>
-        {form.urg && <Field label="Taxa Urgência (R$)"><input value={form.taxa} onChange={(event) => setField("taxa", event.target.value)} style={inputStyle} placeholder="Ex: 30,00" /></Field>}
+        {form.urg && <Field label="Taxa Urgência (R$)"><input value={form.taxa} onChange={(event) => setField("taxa", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 30,00" /></Field>}
         <Field label="Total Final">
           <div style={{ ...inputStyle, display: "flex", alignItems: "center", minHeight: 46, fontWeight: 700, color: THEME.primary, background: THEME.primarySoft }}>
             {formatCurrency(getTotal(form))}
@@ -359,7 +445,7 @@ function Form({ init, onSave, onCancel, isEdit }) {
               {SHIPPERS.map((shipper) => <option key={shipper} value={shipper}>{shipper}</option>)}
             </select>
           </Field>
-          <Field label="Frete (R$)"><input value={form.frete} onChange={(event) => setField("frete", event.target.value)} style={inputStyle} placeholder="Ex: 25,00" /></Field>
+          <Field label="Frete (R$)"><input value={form.frete} onChange={(event) => setField("frete", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 25,00" /></Field>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Field label="Confecção até"><input type="date" value={form.pconf} onChange={(event) => setField("pconf", event.target.value)} style={inputStyle} /></Field>
@@ -380,6 +466,10 @@ function Form({ init, onSave, onCancel, isEdit }) {
             {images.map((image, index) => (
               <div key={index} style={{ position: "relative", aspectRatio: "1", borderRadius: 8, overflow: "hidden", border: `1px solid ${THEME.br}` }}>
                 <img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <div style={{ position: "absolute", left: 4, bottom: 4, display: "flex", gap: 4 }}>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); moveImage(index, -1); }} style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(255,255,255,0.88)", color: THEME.tm, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>←</button>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); moveImage(index, 1); }} style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(255,255,255,0.88)", color: THEME.tm, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>→</button>
+                </div>
                 <button type="button" onClick={(event) => { event.stopPropagation(); setImages((prev) => prev.filter((_, imageIndex) => imageIndex !== index)); }} style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,0.7)", color: "#fff", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>✕</button>
               </div>
             ))}
@@ -389,7 +479,23 @@ function Form({ init, onSave, onCancel, isEdit }) {
 
       <Section title="📝 Observações e Status">
         <Field label="Observações" full><textarea value={form.obs} onChange={(event) => setField("obs", event.target.value)} style={{ ...inputStyle, height: 75, resize: "vertical", lineHeight: 1.6 }} placeholder="Detalhes especiais, urgências..." /></Field>
-        <Field label="Status"><Segmented opts={STATUS_LIST} val={form.status} onChange={(value) => setField("status", value)} small /></Field>
+        <Field label="Status"><Segmented opts={STATUS_LIST} val={form.status} onChange={(value) => { setField("status", value); setStatusHistory((prev) => prev.at(-1)?.status === value ? prev : [...prev, getStatusHistoryEntry(value)]); }} small /></Field>
+      </Section>
+
+      <Section title="💼 Resumo Financeiro">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+          {[
+            ["Produto", formatCurrency(parseCurrency(form.valor))],
+            ["Frete", formatCurrency(parseCurrency(form.frete))],
+            ["Urgência", formatCurrency(form.urg ? parseCurrency(form.taxa) : 0)],
+            ["Total", formatCurrency(getTotal(form))],
+          ].map(([label, value]) => (
+            <div key={label} style={{ background: label === "Total" ? THEME.primarySoft : THEME.soft, border: `1px solid ${THEME.br}`, borderRadius: 12, padding: "10px 12px" }}>
+              <div style={{ ...labelStyle, marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: label === "Total" ? THEME.primary : THEME.tm, fontFamily: "Poppins, sans-serif" }}>{value}</div>
+            </div>
+          ))}
+        </div>
       </Section>
 
       <Section title="🧩 Peças Adicionais">
@@ -470,7 +576,7 @@ function Form({ init, onSave, onCancel, isEdit }) {
   );
 }
 
-function Card({ order, onUpdate, onDelete }) {
+function Card({ order, onUpdate, onDelete, onDuplicate }) {
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(false);
   const [viewer, setViewer] = useState(null);
@@ -481,6 +587,8 @@ function Card({ order, onUpdate, onDelete }) {
   const extraItems = parsedNotes.extraItems;
   const parsedContact = splitContact(order.contato);
   const overdue = isOverdue(order);
+  const dueSoon = isDueSoon(order);
+  const clientSummary = buildClientSummary(order, extraItems, visibleObs);
 
   if (edit) {
     return <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 18, padding: 20, marginBottom: 10, boxShadow: "0 18px 40px rgba(31,41,55,0.08)" }}><Form init={order} isEdit onSave={(updated) => { onUpdate(updated); setEdit(false); }} onCancel={() => setEdit(false)} /></div>;
@@ -493,6 +601,7 @@ function Card({ order, onUpdate, onDelete }) {
     ...(order.tipo === "Brajá" ? [["Finalização", order.fin], ["Firmas", order.fqtd ? `${order.fqtd}x ${order.ffmt || ""} ${order.fcor || ""}`.trim() : "—"]] : []),
     ...(order.ping ? [["Pingente", `${order.pqtd}x ${order.pqual} (${order.pmetal})`]] : []),
     ["Valor", order.valor ? `R$ ${order.valor}` : "—"],
+    ["Total Final", formatCurrency(getTotal(order))],
     ["Pagamento", `${order.pgto}${order.parc ? ` ${order.parc}` : ""}${order.desconto ? " (-5%)" : ""}`],
     ["Transp.", order.transp || "—"], ["Frete", order.frete ? `R$ ${order.frete}` : "—"],
     ...(order.urg ? [["Urgente", `Taxa R$ ${order.taxa || "—"}`]] : []),
@@ -532,6 +641,9 @@ function Card({ order, onUpdate, onDelete }) {
     ];
     await navigator.clipboard.writeText(lines.join("\n"));
   };
+  const copyClientSummary = async () => {
+    await navigator.clipboard.writeText(clientSummary);
+  };
 
   const handleDelete = async () => {
     if (!window.confirm(`Excluir pedido de ${order.nome}?`)) return;
@@ -549,6 +661,7 @@ function Card({ order, onUpdate, onDelete }) {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
           {overdue && <span style={{ fontSize: 10, background: "#F97316", color: "#FFFFFF", padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif" }}>ATRASADO</span>}
+          {!overdue && dueSoon && <span style={{ fontSize: 10, background: "#FBBF24", color: "#FFFFFF", padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif" }}>PRAZO</span>}
           {order.urg && <span style={{ fontSize: 10, background: "#FFF7E2", color: THEME.gold, padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif", border: `1px solid #EED9B0` }}>⚡</span>}
           <select value={order.status} onChange={async (event) => { event.stopPropagation(); const nextStatus = event.target.value; await supabase.from("pedidos").update({ status: nextStatus }).eq("id", order.id); onUpdate({ ...order, status: nextStatus }); }} onClick={(event) => event.stopPropagation()} style={{ border: "none", background: statusColors.bg, color: statusColors.cl, padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer", outline: "none", fontFamily: "Poppins, sans-serif" }}>
             {STATUS_LIST.map((status) => <option key={status} value={status}>{STATUS_COLORS[status].em} {status}</option>)}
@@ -579,9 +692,19 @@ function Card({ order, onUpdate, onDelete }) {
             </div>
           )}
           {visibleObs && <div style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 13, color: THEME.tm, lineHeight: 1.6, fontFamily: "Poppins, sans-serif", whiteSpace: "pre-wrap" }}><strong>Obs:</strong> {visibleObs}</div>}
+          <div style={{ background: "#FFFFFF", border: `1px solid ${THEME.br}`, borderRadius: 14, padding: "14px 16px", marginBottom: 12, boxShadow: "0 10px 24px rgba(31,41,55,0.05)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <div style={{ ...labelStyle, marginBottom: 0, color: THEME.primary }}>Resumo para cliente</div>
+              <button type="button" onClick={copyClientSummary} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.primary}`, background: THEME.primary, color: "#FFFFFF", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Copiar resumo</button>
+            </div>
+            <div style={{ fontSize: 13, color: THEME.tm, lineHeight: 1.75, whiteSpace: "pre-wrap", fontFamily: "Poppins, sans-serif" }}>
+              {clientSummary}
+            </div>
+          </div>
           {images.length > 0 && <div style={{ marginBottom: 13 }}><div style={{ ...labelStyle, marginBottom: 7 }}>📷 Referências</div><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{images.map((image, index) => <div key={index} onClick={() => setViewer(image)} style={{ width: 70, height: 70, borderRadius: 8, overflow: "hidden", cursor: "zoom-in", border: `1px solid ${THEME.br}`, flexShrink: 0 }}><img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>)}</div></div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button type="button" onClick={copy} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.br}`, background: "transparent", color: THEME.tm, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>📋 Copiar</button>
+            <button type="button" onClick={() => onDuplicate(order)} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.primary}`, background: "transparent", color: THEME.primary, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>⧉ Duplicar</button>
             <button type="button" onClick={() => setEdit(true)} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.gold}`, background: "transparent", color: THEME.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>✏️ Editar</button>
             <button type="button" onClick={handleDelete} style={{ padding: "7px 14px", borderRadius: 10, border: "1px solid #7F1D1D", background: "transparent", color: "#F87171", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>🗑 Excluir</button>
           </div>
@@ -598,6 +721,7 @@ export default function App() {
   const [loaded, setLoaded] = useState(false);
   const [filter, setFilter] = useState("Todos");
   const [search, setSearch] = useState("");
+  const [deadlineFilter, setDeadlineFilter] = useState("Todos");
   const [toast, setToast] = useState("");
   useEffect(() => {
     supabase.from("pedidos").select("*").order("criado_em", { ascending: false }).then(({ data, error }) => {
@@ -616,13 +740,63 @@ export default function App() {
   };
   const updateOrder = (order) => setOrders((prev) => prev.map((item) => (item.id === order.id ? order : item)));
   const deleteOrder = (id) => setOrders((prev) => prev.filter((item) => item.id !== id));
+  const duplicateOrder = (order) => {
+    const clone = { ...order, id: generateId(), criado_em: new Date().toISOString(), upd: new Date().toISOString(), status: "Novo", rastreio: "" };
+    saveOrder(clone);
+    setTab("lista");
+  };
+  const exportCsv = () => {
+    const header = ["Nome", "Contato", "Instagram", "Canal", "Status", "Entrega", "Valor", "Frete", "Total", "Observacoes"];
+    const rows = filteredOrders.map((order) => {
+      const contact = splitContact(order.contato);
+      const notes = splitOrderNotes(order.obs);
+      return [order.nome, contact.contato, contact.instagram, order.canal, order.status, order.pent || "", order.valor || "", order.frete || "", formatCurrency(getTotal(order)), (notes.visibleObs || "").replace(/\n/g, " ")];
+    });
+    const csv = [header, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(";"))
+      .join("\n");
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `pedidos-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
   const counts = STATUS_LIST.reduce((accumulator, status) => ({ ...accumulator, [status]: orders.filter((order) => order.status === status).length }), {});
   const filteredOrders = orders.filter((order) => {
     const statusMatches = filter === "Todos" || order.status === filter;
-    const searchMatches = !search || ["nome", "contato", "cores", "mat", "obs"].some((key) => order[key]?.toLowerCase().includes(search.toLowerCase()));
-    return statusMatches && searchMatches;
+    const notes = splitOrderNotes(order.obs);
+    const haystack = [
+      order.nome,
+      order.contato,
+      order.cores,
+      order.mat,
+      order.obs,
+      order.rastreio,
+      notes.visibleObs,
+      ...notes.extraItems.flatMap((item) => [item.tipo, item.mat, item.matd, item.cores, item.detalhes]),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    const searchMatches = !search || haystack.includes(search.toLowerCase());
+    let deadlineMatches = true;
+    if (deadlineFilter === "Atrasados") deadlineMatches = isOverdue(order);
+    if (deadlineFilter === "Hoje") {
+      const due = order.pent || order.pconf;
+      deadlineMatches = !!due && new Date(due).toDateString() === new Date().toDateString();
+    }
+    if (deadlineFilter === "Próximos 2 dias") deadlineMatches = isDueSoon(order);
+    return statusMatches && searchMatches && deadlineMatches;
   });
   const inProgress = orders.filter((order) => ["Novo", "Aguardando Pagamento", "Em Produção"].includes(order.status)).length;
+  const revenueMonth = orders.filter((order) => {
+    const d = order.criado_em ? new Date(order.criado_em) : null;
+    const now = new Date();
+    return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).reduce((sum, order) => sum + getTotal(order), 0);
+  const overdueCount = orders.filter(isOverdue).length;
   const sortedKanbanOrders = (status) =>
     orders
       .filter((order) => order.status === status)
@@ -635,7 +809,7 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
             <div style={{ fontSize: 26 }}>✨</div>
             <div><div style={{ fontSize: 22, fontWeight: 800, color: THEME.tm, letterSpacing: 0.2 }}>Umbando · Pedidos</div><div style={{ fontSize: 12, color: THEME.primary, fontWeight: 600 }}>Gerenciador de encomendas personalizadas</div></div>
-            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>{[["Andamento", inProgress, THEME.primary], ["Total", orders.length, THEME.tm]].map(([label, value, color]) => <div key={label} style={{ background: "#FFFFFF", border: `1px solid ${THEME.br}`, borderRadius: 14, padding: "7px 12px", textAlign: "center", minWidth: 72, boxShadow: "0 8px 22px rgba(31,41,55,0.05)" }}><div style={{ fontSize: 18, fontWeight: 800, color, fontFamily: "Poppins, sans-serif" }}>{value}</div><div style={{ fontSize: 10, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>{label}</div></div>)}</div>
+            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>{[["Andamento", inProgress, THEME.primary], ["Atrasados", overdueCount, "#C2410C"], ["Mês", formatCurrency(revenueMonth), THEME.tm]].map(([label, value, color]) => <div key={label} style={{ background: "#FFFFFF", border: `1px solid ${THEME.br}`, borderRadius: 14, padding: "7px 12px", textAlign: "center", minWidth: 72, boxShadow: "0 8px 22px rgba(31,41,55,0.05)" }}><div style={{ fontSize: 18, fontWeight: 800, color, fontFamily: "Poppins, sans-serif" }}>{value}</div><div style={{ fontSize: 10, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>{label}</div></div>)}</div>
           </div>
           <div style={{ display: "flex", gap: 6 }}>{[["novo", "➕ Novo"], ["lista", `📦 Pedidos (${orders.length})`], ["kanban", "📊 Kanban"]].map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} style={{ background: tab === key ? THEME.primary : "#FFFFFF", color: tab === key ? "#FFFFFF" : THEME.tl, border: `1px solid ${tab === key ? THEME.primary : THEME.br}`, padding: "10px 16px", fontSize: 13, fontWeight: tab === key ? 700 : 500, cursor: "pointer", borderRadius: "14px 14px 0 0", fontFamily: "Poppins, sans-serif", boxShadow: tab === key ? "0 10px 24px rgba(78,95,77,0.16)" : "none" }}>{label}</button>)}</div>
         </div>
@@ -654,9 +828,19 @@ export default function App() {
             <div>
               <div style={{ marginBottom: 14, display: "flex", flexDirection: "column", gap: 10 }}>
                 <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="🔍 Buscar por nome, contato, cores..." style={{ ...inputStyle, padding: "11px 14px", fontSize: 15 }} />
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {["Todos", "Hoje", "Próximos 2 dias", "Atrasados"].map((item) => (
+                    <button key={item} type="button" onClick={() => setDeadlineFilter(item)} style={{ background: deadlineFilter === item ? THEME.primary : "#FFFFFF", color: deadlineFilter === item ? "#FFFFFF" : THEME.tm, border: `1px solid ${deadlineFilter === item ? THEME.primary : THEME.br}`, borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>
+                      {item}
+                    </button>
+                  ))}
+                  <button type="button" onClick={exportCsv} style={{ marginLeft: "auto", background: "#FFFFFF", color: THEME.primary, border: `1px solid ${THEME.br}`, borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>
+                    ⭳ Exportar CSV
+                  </button>
+                </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{["Todos", ...STATUS_LIST].map((status) => { const colors = status !== "Todos" ? STATUS_COLORS[status] : null; return <button key={status} type="button" onClick={() => setFilter(status)} style={{ background: filter === status ? THEME.primary : colors?.bg || "#FFFFFF", color: filter === status ? "#FFFFFF" : colors?.cl || THEME.tm, border: `1px solid ${filter === status ? THEME.primary : THEME.br}`, borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>{status} ({status === "Todos" ? orders.length : counts[status] || 0})</button>; })}</div>
               </div>
-              {filteredOrders.length === 0 ? <div style={{ textAlign: "center", padding: "60px 20px", background: THEME.card, borderRadius: 18, border: `1px dashed ${THEME.br}`, color: THEME.tl }}><div style={{ fontSize: 34, marginBottom: 10 }}>🔮</div><div style={{ fontSize: 16, fontWeight: 700, color: THEME.tm, marginBottom: 6, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Nenhum pedido ainda" : "Nenhum resultado"}</div><div style={{ fontSize: 13, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Crie o primeiro na aba Novo" : "Tente outros filtros"}</div></div> : filteredOrders.map((order) => <Card key={order.id} order={order} onUpdate={updateOrder} onDelete={deleteOrder} />)}
+              {filteredOrders.length === 0 ? <div style={{ textAlign: "center", padding: "60px 20px", background: THEME.card, borderRadius: 18, border: `1px dashed ${THEME.br}`, color: THEME.tl }}><div style={{ fontSize: 34, marginBottom: 10 }}>🔮</div><div style={{ fontSize: 16, fontWeight: 700, color: THEME.tm, marginBottom: 6, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Nenhum pedido ainda" : "Nenhum resultado"}</div><div style={{ fontSize: 13, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Crie o primeiro na aba Novo" : "Tente outros filtros"}</div></div> : filteredOrders.map((order) => <Card key={order.id} order={order} onUpdate={updateOrder} onDelete={deleteOrder} onDuplicate={duplicateOrder} />)}
             </div>
           )}
           {tab === "kanban" && <div style={{ overflowX: "auto", paddingBottom: 8 }}><div style={{ display: "flex", gap: 10, minWidth: "max-content" }}>{STATUS_LIST.map((status) => { const colors = STATUS_COLORS[status]; const list = sortedKanbanOrders(status); return <div key={status} style={{ width: 195, flexShrink: 0 }}><div style={{ background: colors.bg, color: colors.cl, padding: "8px 12px", borderRadius: "14px 14px 0 0", fontWeight: 700, fontSize: 12, display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "Poppins, sans-serif", border: `1px solid ${THEME.br}` }}><span>{colors.em} {status}</span><span style={{ background: "rgba(255,255,255,0.65)", borderRadius: 20, padding: "2px 8px" }}>{list.length}</span></div><div style={{ background: "#FCFBF8", border: `1px solid ${THEME.br}`, borderTop: "none", borderRadius: "0 0 14px 14px", padding: 8, minHeight: 100 }}>{list.length === 0 ? <div style={{ textAlign: "center", padding: "24px 10px", color: THEME.tl, fontSize: 12, fontFamily: "Poppins, sans-serif" }}>Vazio</div> : list.map((order) => <div key={order.id} onClick={() => { setSearch(order.nome); setFilter("Todos"); setTab("lista"); }} style={{ background: isOverdue(order) ? "#FFF4E8" : THEME.card, border: `1px solid ${isOverdue(order) ? "#FDBA74" : THEME.br}`, borderRadius: 12, padding: "10px 12px", marginBottom: 8, cursor: "pointer", boxShadow: "0 8px 18px rgba(31,41,55,0.05)" }}><div style={{ fontWeight: 700, fontSize: 13, color: THEME.tm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "Poppins, sans-serif" }}>{order.nome || "Cliente"}</div><div style={{ fontSize: 11, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>{order.tipo}{order.tipo === "Brajá" ? ` ${order.fios}f` : ""} · {order.mat} · {order.tam}</div>{order.pent && <div style={{ fontSize: 10, color: isOverdue(order) ? "#C2410C" : THEME.tl, marginTop: 4, fontFamily: "Poppins, sans-serif" }}>{isOverdue(order) ? "Atrasado: " : "Entrega: "}{formatDate(order.pent)}</div>}{order.valor && <div style={{ fontSize: 12, fontWeight: 700, color: THEME.primary, marginTop: 4, fontFamily: "Poppins, sans-serif" }}>{formatCurrency(getTotal(order))}</div>}{order.urg && <div style={{ fontSize: 10, color: THEME.gold, fontWeight: 700, marginTop: 2, fontFamily: "Poppins, sans-serif" }}>⚡ URGENTE</div>}</div>)}</div></div>; })}</div></div>}
