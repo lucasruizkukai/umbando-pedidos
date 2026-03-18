@@ -132,7 +132,7 @@ function splitOrderNotes(rawObs) {
   const legacyIndex = source.indexOf(LEGACY_EXTRA_ITEMS_MARKER);
 
   if (markerIndex === -1 && legacyIndex === -1) {
-    return { visibleObs: source, extraItems: [], statusHistory: [], internalObs: "" };
+    return { visibleObs: source, extraItems: [], statusHistory: [], internalObs: "", signalValue: "" };
   }
 
   if (markerIndex !== -1) {
@@ -140,15 +140,16 @@ function splitOrderNotes(rawObs) {
     const rawMeta = source.slice(markerIndex + ORDER_META_MARKER.length).trim();
     try {
       const parsed = JSON.parse(rawMeta);
-      if (Array.isArray(parsed)) return { visibleObs, extraItems: parsed, statusHistory: [], internalObs: "" };
+      if (Array.isArray(parsed)) return { visibleObs, extraItems: parsed, statusHistory: [], internalObs: "", signalValue: "" };
       return {
         visibleObs,
         extraItems: Array.isArray(parsed?.extraItems) ? parsed.extraItems : [],
         statusHistory: Array.isArray(parsed?.statusHistory) ? parsed.statusHistory : [],
         internalObs: parsed?.internalObs || "",
+        signalValue: parsed?.signalValue || "",
       };
     } catch {
-      return { visibleObs: source.replace(ORDER_META_MARKER, "").trim(), extraItems: [], statusHistory: [], internalObs: "" };
+      return { visibleObs: source.replace(ORDER_META_MARKER, "").trim(), extraItems: [], statusHistory: [], internalObs: "", signalValue: "" };
     }
   }
 
@@ -156,19 +157,20 @@ function splitOrderNotes(rawObs) {
   const rawMeta = source.slice(legacyIndex + LEGACY_EXTRA_ITEMS_MARKER.length).trim();
   try {
     const parsed = JSON.parse(rawMeta);
-    return { visibleObs, extraItems: Array.isArray(parsed) ? parsed : [], statusHistory: [], internalObs: "" };
+    return { visibleObs, extraItems: Array.isArray(parsed) ? parsed : [], statusHistory: [], internalObs: "", signalValue: "" };
   } catch {
-    return { visibleObs: source.replace(LEGACY_EXTRA_ITEMS_MARKER, "").trim(), extraItems: [], statusHistory: [], internalObs: "" };
+    return { visibleObs: source.replace(LEGACY_EXTRA_ITEMS_MARKER, "").trim(), extraItems: [], statusHistory: [], internalObs: "", signalValue: "" };
   }
 }
 
-function buildOrderNotes(visibleObs, extraItems, statusHistory, internalObs) {
+function buildOrderNotes(visibleObs, extraItems, statusHistory, internalObs, signalValue) {
   const cleanObs = visibleObs?.trim() || "";
   const validItems = (extraItems || []).filter((item) => item && (item.cores || item.detalhes || item.mat || item.tipo));
   const validHistory = (statusHistory || []).filter((item) => item?.status && item?.at);
   const cleanInternalObs = internalObs?.trim() || "";
-  if (!validItems.length && !validHistory.length && !cleanInternalObs) return cleanObs;
-  return [cleanObs, ORDER_META_MARKER, JSON.stringify({ extraItems: validItems, statusHistory: validHistory, internalObs: cleanInternalObs })]
+  const cleanSignal = signalValue || "";
+  if (!validItems.length && !validHistory.length && !cleanInternalObs && !cleanSignal) return cleanObs;
+  return [cleanObs, ORDER_META_MARKER, JSON.stringify({ extraItems: validItems, statusHistory: validHistory, internalObs: cleanInternalObs, signalValue: cleanSignal })]
     .filter(Boolean)
     .join("\n\n");
 }
@@ -340,7 +342,7 @@ function Section({ title, children }) {
 function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channels = CHANNELS, shippers = SHIPPERS, sizes = SIZES }) {
   const parsedInit = splitOrderNotes(init?.obs);
   const parsedContact = splitContact(init?.contato);
-  const [form, setForm] = useState({ ...EMPTY, ...(init || {}), contato: parsedContact.contato, instagram: parsedContact.instagram, obs: parsedInit.visibleObs, obsInterna: parsedInit.internalObs || "" });
+  const [form, setForm] = useState({ ...EMPTY, ...(init || {}), contato: parsedContact.contato, instagram: parsedContact.instagram, obs: parsedInit.visibleObs, obsInterna: parsedInit.internalObs || "", sinal: parsedInit.signalValue || init?.sinal || "" });
   const [images, setImages] = useState(init?.imgs || []);
   const [extraItems, setExtraItems] = useState(parsedInit.extraItems);
   const [statusHistory, setStatusHistory] = useState(parsedInit.statusHistory.length ? parsedInit.statusHistory : [getStatusHistoryEntry((init || EMPTY).status)]);
@@ -401,12 +403,12 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
     }
     setSaving(true);
     const id = form.id || generateId();
-    const { instagram, obsInterna, ...dbForm } = form;
+    const { instagram, obsInterna, sinal, ...dbForm } = form;
     const row = {
       ...dbForm,
       id,
       contato: buildContact(form.contato, form.instagram),
-      obs: buildOrderNotes(form.obs, extraItems, statusHistory, form.obsInterna),
+      obs: buildOrderNotes(form.obs, extraItems, statusHistory, form.obsInterna, form.sinal),
       imgs: images,
       criado_em: form.criado_em || new Date().toISOString(),
       upd: new Date().toISOString(),
@@ -780,9 +782,9 @@ function Card({ order, onUpdate, onDelete, onDuplicate, onToast }) {
       status: nextOrder.status,
       pconf: nextOrder.pconf,
       pent: nextOrder.pent,
-      obs: buildOrderNotes(visibleObs, extraItems, nextHistory),
+      obs: buildOrderNotes(visibleObs, extraItems, nextHistory, internalObs, parsedNotes.signalValue || order.sinal || ""),
     }).eq("id", order.id);
-    if (!error) onUpdate({ ...nextOrder, obs: buildOrderNotes(visibleObs, extraItems, nextHistory) });
+    if (!error) onUpdate({ ...nextOrder, obs: buildOrderNotes(visibleObs, extraItems, nextHistory, internalObs, parsedNotes.signalValue || order.sinal || "") });
   };
 
   const handleDelete = async () => {
