@@ -9,15 +9,15 @@ const STATUS_COLORS = {
   "Conclu\u00eddo": { bg: "#DCFCE7", cl: "#166534", em: "C" },
   Cancelado: { bg: "#F1F5F9", cl: "#64748B", em: "X" },
 };
-const MATERIALS = ["MiÃ§anga", "Cristal", "Porcelana", "Semente"];
+const MATERIALS = ["Mi\u00e7anga", "Cristal", "Porcelana", "Semente"];
 const MATERIAL_DETAILS = {
-  MiÃ§anga: ["Chinesa", "Jablonex"],
+  "Mi\u00e7anga": ["Chinesa", "Jablonex"],
   Cristal: ["6mm", "8mm", "10mm"],
   Porcelana: ["6mm", "8mm"],
-  Semente: ["LÃ¡grima N.Sra.", "Coquinho", "Olho de Boi", "Olho de Cabra", "Madeira"],
+  Semente: ["L\u00e1grima N.Sra.", "Coquinho", "Olho de Boi", "Olho de Cabra", "Madeira"],
 };
 const MATERIAL_LABELS = {
-  MiÃ§anga: "Tipo de MiÃ§anga",
+  "Mi\u00e7anga": "Tipo de Mi\u00e7anga",
   Cristal: "Tamanho Cristal",
   Porcelana: "Tamanho",
   Semente: "Tipo de Semente",
@@ -25,7 +25,7 @@ const MATERIAL_LABELS = {
 const FIRM_FORMATS = ["Lisa", "Mordida", "Pitanga", "Meteoro", "Sextavada", "Bola"];
 const SIZES = ["40cm", "50cm", "60cm", "65cm", "70cm", "75cm", "80cm"];
 const SHIPPERS = ["Correios", "Loggi", "JadLog", "Motoboy"];
-const CHANNELS = ["WhatsApp", "Instagram DM", "ComentÃ¡rio"];
+const CHANNELS = ["WhatsApp", "Instagram DM", "Coment\u00e1rio"];
 const THEME = {
   br: "#D8D3C8",
   gold: "#C8A96A",
