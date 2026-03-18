@@ -47,7 +47,7 @@ const EMPTY = {
   nome: "", contato: "", canal: "WhatsApp", tipo: "Guia", fios: "3", mat: "Miçanga", matd: "", cores: "", fin: "Fio solto",
   fqtd: "", fcor: "", ffmt: "", ping: false, pqtd: "", pqual: "", pmetal: "Prateado", fio: "Nylon", fech: "Com firma",
   env: "Fechado", tam: "60cm", transp: "", frete: "", pgto: "Pix", parc: "", valor: "", desconto: false, urg: false,
-  taxa: "", pconf: "", pent: "", rastreio: "", status: "Novo", obs: "", obsInterna: "", sinal: "", imgs: [],
+  taxa: "", pconf: "", pent: "", rastreio: "", status: "Novo", obs: "", obsInterna: "", imgs: [],
 };
 
 const inputStyle = { width: "100%", boxSizing: "border-box", border: "1px solid #D8D3C8", borderRadius: 12, padding: "11px 13px", fontSize: 14, fontFamily: "Poppins, sans-serif", background: "#FFFFFF", color: "#1F2937", outline: "none", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6)" };
@@ -73,11 +73,6 @@ function getTotal(order) {
   const urgency = order.urg ? parseCurrency(order.taxa) : 0;
   const discount = order.desconto ? subtotal * 0.05 : 0;
   return subtotal + shipping + urgency - discount;
-}
-
-function getRemaining(order) {
-  const remaining = getTotal(order) - parseCurrency(order.sinal);
-  return remaining > 0 ? remaining : 0;
 }
 
 function getDueTimestamp(order) {
@@ -132,7 +127,7 @@ function splitOrderNotes(rawObs) {
   const legacyIndex = source.indexOf(LEGACY_EXTRA_ITEMS_MARKER);
 
   if (markerIndex === -1 && legacyIndex === -1) {
-    return { visibleObs: source, extraItems: [], statusHistory: [], internalObs: "", signalValue: "" };
+    return { visibleObs: source, extraItems: [], statusHistory: [], internalObs: "" };
   }
 
   if (markerIndex !== -1) {
@@ -140,16 +135,15 @@ function splitOrderNotes(rawObs) {
     const rawMeta = source.slice(markerIndex + ORDER_META_MARKER.length).trim();
     try {
       const parsed = JSON.parse(rawMeta);
-      if (Array.isArray(parsed)) return { visibleObs, extraItems: parsed, statusHistory: [], internalObs: "", signalValue: "" };
+      if (Array.isArray(parsed)) return { visibleObs, extraItems: parsed, statusHistory: [], internalObs: "" };
       return {
         visibleObs,
         extraItems: Array.isArray(parsed?.extraItems) ? parsed.extraItems : [],
         statusHistory: Array.isArray(parsed?.statusHistory) ? parsed.statusHistory : [],
         internalObs: parsed?.internalObs || "",
-        signalValue: parsed?.signalValue || "",
       };
     } catch {
-      return { visibleObs: source.replace(ORDER_META_MARKER, "").trim(), extraItems: [], statusHistory: [], internalObs: "", signalValue: "" };
+      return { visibleObs: source.replace(ORDER_META_MARKER, "").trim(), extraItems: [], statusHistory: [], internalObs: "" };
     }
   }
 
@@ -157,20 +151,19 @@ function splitOrderNotes(rawObs) {
   const rawMeta = source.slice(legacyIndex + LEGACY_EXTRA_ITEMS_MARKER.length).trim();
   try {
     const parsed = JSON.parse(rawMeta);
-    return { visibleObs, extraItems: Array.isArray(parsed) ? parsed : [], statusHistory: [], internalObs: "", signalValue: "" };
+    return { visibleObs, extraItems: Array.isArray(parsed) ? parsed : [], statusHistory: [], internalObs: "" };
   } catch {
-    return { visibleObs: source.replace(LEGACY_EXTRA_ITEMS_MARKER, "").trim(), extraItems: [], statusHistory: [], internalObs: "", signalValue: "" };
+    return { visibleObs: source.replace(LEGACY_EXTRA_ITEMS_MARKER, "").trim(), extraItems: [], statusHistory: [], internalObs: "" };
   }
 }
 
-function buildOrderNotes(visibleObs, extraItems, statusHistory, internalObs, signalValue) {
+function buildOrderNotes(visibleObs, extraItems, statusHistory, internalObs) {
   const cleanObs = visibleObs?.trim() || "";
   const validItems = (extraItems || []).filter((item) => item && (item.cores || item.detalhes || item.mat || item.tipo));
   const validHistory = (statusHistory || []).filter((item) => item?.status && item?.at);
   const cleanInternalObs = internalObs?.trim() || "";
-  const cleanSignal = signalValue || "";
-  if (!validItems.length && !validHistory.length && !cleanInternalObs && !cleanSignal) return cleanObs;
-  return [cleanObs, ORDER_META_MARKER, JSON.stringify({ extraItems: validItems, statusHistory: validHistory, internalObs: cleanInternalObs, signalValue: cleanSignal })]
+  if (!validItems.length && !validHistory.length && !cleanInternalObs) return cleanObs;
+  return [cleanObs, ORDER_META_MARKER, JSON.stringify({ extraItems: validItems, statusHistory: validHistory, internalObs: cleanInternalObs })]
     .filter(Boolean)
     .join("\n\n");
 }
@@ -216,7 +209,6 @@ function buildClientSummary(order, extraItems = [], visibleObs = "") {
     ...(order.urg ? [`Taxa de urgência: ${formatCurrency(parseCurrency(order.taxa))}`] : []),
     ...(order.desconto ? ["Desconto Pix aplicado: 5%"] : []),
     `Total final: ${formatCurrency(getTotal(order))}`,
-    ...(parseCurrency(order.sinal) ? [`Sinal pago: ${formatCurrency(parseCurrency(order.sinal))}`, `Valor restante: ${formatCurrency(getRemaining(order))}`] : []),
     `Pagamento: ${order.pgto}${order.parc ? ` ${order.parc}` : ""}`,
     ...(order.transp ? [`Transportadora: ${order.transp}`] : []),
     ...(order.pconf ? [`Previsão de confecção: ${formatDate(order.pconf)}`] : []),
@@ -342,7 +334,7 @@ function Section({ title, children }) {
 function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channels = CHANNELS, shippers = SHIPPERS, sizes = SIZES }) {
   const parsedInit = splitOrderNotes(init?.obs);
   const parsedContact = splitContact(init?.contato);
-  const [form, setForm] = useState({ ...EMPTY, ...(init || {}), contato: parsedContact.contato, instagram: parsedContact.instagram, obs: parsedInit.visibleObs, obsInterna: parsedInit.internalObs || "", sinal: parsedInit.signalValue || init?.sinal || "" });
+  const [form, setForm] = useState({ ...EMPTY, ...(init || {}), contato: parsedContact.contato, instagram: parsedContact.instagram, obs: parsedInit.visibleObs, obsInterna: parsedInit.internalObs || "" });
   const [images, setImages] = useState(init?.imgs || []);
   const [extraItems, setExtraItems] = useState(parsedInit.extraItems);
   const [statusHistory, setStatusHistory] = useState(parsedInit.statusHistory.length ? parsedInit.statusHistory : [getStatusHistoryEntry((init || EMPTY).status)]);
@@ -403,12 +395,12 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
     }
     setSaving(true);
     const id = form.id || generateId();
-    const { instagram, obsInterna, sinal, ...dbForm } = form;
+    const { instagram, obsInterna, ...dbForm } = form;
     const row = {
       ...dbForm,
       id,
       contato: buildContact(form.contato, form.instagram),
-      obs: buildOrderNotes(form.obs, extraItems, statusHistory, form.obsInterna, form.sinal),
+      obs: buildOrderNotes(form.obs, extraItems, statusHistory, form.obsInterna),
       imgs: images,
       criado_em: form.criado_em || new Date().toISOString(),
       upd: new Date().toISOString(),
@@ -539,15 +531,9 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
           ))}
         </div>
         {form.urg && <Field label="Taxa Urgência (R$)"><input value={form.taxa} onChange={(event) => setField("taxa", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 30,00" /></Field>}
-        <Field label="Sinal pago (R$)"><input value={form.sinal || ""} onChange={(event) => setField("sinal", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 50,00" /></Field>
         <Field label="Total Final">
           <div style={{ ...inputStyle, display: "flex", alignItems: "center", minHeight: 46, fontWeight: 700, color: THEME.primary, background: THEME.primarySoft }}>
             {formatCurrency(getTotal(form))}
-          </div>
-        </Field>
-        <Field label="Valor Restante">
-          <div style={{ ...inputStyle, display: "flex", alignItems: "center", minHeight: 46, fontWeight: 700, color: THEME.tm, background: "#FFFFFF" }}>
-            {formatCurrency(getRemaining(form))}
           </div>
         </Field>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -602,7 +588,6 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
             ["Frete", formatCurrency(parseCurrency(form.frete))],
             ["Urgência", formatCurrency(form.urg ? parseCurrency(form.taxa) : 0)],
             ["Total", formatCurrency(getTotal(form))],
-            ["Restante", formatCurrency(getRemaining(form))],
           ].map(([label, value]) => (
             <div key={label} style={{ background: label === "Total" ? THEME.primarySoft : THEME.soft, border: `1px solid ${THEME.br}`, borderRadius: 12, padding: "10px 12px" }}>
               <div style={{ ...labelStyle, marginBottom: 4 }}>{label}</div>
@@ -749,7 +734,6 @@ function Card({ order, onUpdate, onDelete, onDuplicate, onToast }) {
       `Frete: ${formatCurrency(parseCurrency(order.frete))}`,
       `Taxa urgência: ${formatCurrency(order.urg ? parseCurrency(order.taxa) : 0)}`,
       `Total final: ${formatCurrency(getTotal(order))}`,
-      ...(parseCurrency(order.sinal) ? [`Sinal pago: ${formatCurrency(parseCurrency(order.sinal))}`, `Valor restante: ${formatCurrency(getRemaining(order))}`] : []),
       `Pagamento: ${order.pgto}${order.parc ? ` ${order.parc}` : ""}${order.desconto ? " com desconto Pix" : ""}`,
       `Transp: ${order.transp || "—"}`,
       `Confecção: ${formatDate(order.pconf)} | Entrega: ${formatDate(order.pent)}`,
@@ -782,9 +766,9 @@ function Card({ order, onUpdate, onDelete, onDuplicate, onToast }) {
       status: nextOrder.status,
       pconf: nextOrder.pconf,
       pent: nextOrder.pent,
-      obs: buildOrderNotes(visibleObs, extraItems, nextHistory, internalObs, parsedNotes.signalValue || order.sinal || ""),
+      obs: buildOrderNotes(visibleObs, extraItems, nextHistory, internalObs),
     }).eq("id", order.id);
-    if (!error) onUpdate({ ...nextOrder, obs: buildOrderNotes(visibleObs, extraItems, nextHistory, internalObs, parsedNotes.signalValue || order.sinal || "") });
+    if (!error) onUpdate({ ...nextOrder, obs: buildOrderNotes(visibleObs, extraItems, nextHistory, internalObs) });
   };
 
   const handleDelete = async () => {
