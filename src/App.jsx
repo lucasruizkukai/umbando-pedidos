@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "./supabase";
 
-const STATUS_LIST = ["Novo", "Aguardando Pagamento", "Em Produção", "Postado", "Concluído", "Cancelado"];
+const STATUS_LIST = ["Novo", "Em Produção", "Postado", "Concluído", "Cancelado"];
 const STATUS_COLORS = {
   Novo: { bg: "#F3F4F6", cl: "#374151", em: "🆕" },
-  "Aguardando Pagamento": { bg: "#FEF9C3", cl: "#854D0E", em: "💰" },
   "Em Produção": { bg: "#FEE2E2", cl: "#991B1B", em: "🔨" },
   Postado: { bg: "#DBEAFE", cl: "#1E40AF", em: "📬" },
   Concluído: { bg: "#DCFCE7", cl: "#166534", em: "✅" },
@@ -48,7 +47,7 @@ const EMPTY = {
   nome: "", contato: "", canal: "WhatsApp", tipo: "Guia", fios: "3", mat: "Miçanga", matd: "", cores: "", fin: "Fio solto",
   fqtd: "", fcor: "", ffmt: "", ping: false, pqtd: "", pqual: "", pmetal: "Prateado", fio: "Nylon", fech: "Com firma",
   env: "Fechado", tam: "60cm", transp: "", frete: "", pgto: "Pix", parc: "", valor: "", desconto: false, urg: false,
-  taxa: "", pconf: "", pent: "", rastreio: "", status: "Novo", obs: "", imgs: [],
+  taxa: "", pconf: "", pent: "", rastreio: "", status: "Novo", obs: "", obsInterna: "", sinal: "", imgs: [],
 };
 
 const inputStyle = { width: "100%", boxSizing: "border-box", border: "1px solid #D8D3C8", borderRadius: 12, padding: "11px 13px", fontSize: 14, fontFamily: "Poppins, sans-serif", background: "#FFFFFF", color: "#1F2937", outline: "none", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6)" };
@@ -73,6 +72,11 @@ function getTotal(order) {
   const urgency = order.urg ? parseCurrency(order.taxa) : 0;
   const discount = order.desconto ? subtotal * 0.05 : 0;
   return subtotal + shipping + urgency - discount;
+}
+
+function getRemaining(order) {
+  const remaining = getTotal(order) - parseCurrency(order.sinal);
+  return remaining > 0 ? remaining : 0;
 }
 
 function getDueTimestamp(order) {
@@ -122,27 +126,29 @@ function createExtraItem() {
 }
 
 function splitOrderNotes(rawObs) {
-  if (!rawObs || !rawObs.includes(ORDER_META_MARKER)) return { visibleObs: rawObs || "", extraItems: [], statusHistory: [] };
+  if (!rawObs || !rawObs.includes(ORDER_META_MARKER)) return { visibleObs: rawObs || "", extraItems: [], statusHistory: [], internalObs: "" };
   const [visibleObs, rawMeta] = rawObs.split(ORDER_META_MARKER);
   try {
     const parsed = JSON.parse(rawMeta);
-    if (Array.isArray(parsed)) return { visibleObs: visibleObs || "", extraItems: parsed, statusHistory: [] };
+    if (Array.isArray(parsed)) return { visibleObs: visibleObs || "", extraItems: parsed, statusHistory: [], internalObs: "" };
     return {
       visibleObs: visibleObs || "",
       extraItems: Array.isArray(parsed?.extraItems) ? parsed.extraItems : [],
       statusHistory: Array.isArray(parsed?.statusHistory) ? parsed.statusHistory : [],
+      internalObs: parsed?.internalObs || "",
     };
   } catch {
-    return { visibleObs: rawObs || "", extraItems: [], statusHistory: [] };
+    return { visibleObs: rawObs || "", extraItems: [], statusHistory: [], internalObs: "" };
   }
 }
 
-function buildOrderNotes(visibleObs, extraItems, statusHistory) {
+function buildOrderNotes(visibleObs, extraItems, statusHistory, internalObs) {
   const cleanObs = visibleObs?.trim() || "";
   const validItems = (extraItems || []).filter((item) => item && (item.cores || item.detalhes || item.mat || item.tipo));
   const validHistory = (statusHistory || []).filter((item) => item?.status && item?.at);
-  if (!validItems.length && !validHistory.length) return cleanObs;
-  return `${cleanObs}${ORDER_META_MARKER}${JSON.stringify({ extraItems: validItems, statusHistory: validHistory })}`.trim();
+  const cleanInternalObs = internalObs?.trim() || "";
+  if (!validItems.length && !validHistory.length && !cleanInternalObs) return cleanObs;
+  return `${cleanObs}${ORDER_META_MARKER}${JSON.stringify({ extraItems: validItems, statusHistory: validHistory, internalObs: cleanInternalObs })}`.trim();
 }
 
 function splitContact(value) {
@@ -164,9 +170,9 @@ function buildContact(contato, instagram) {
 function buildClientSummary(order, extraItems = [], visibleObs = "") {
   const contact = splitContact(order.contato);
   const lines = [
-    "✨ *Resumo do seu pedido*",
+    "✨ *Fechamento do seu pedido*",
     "",
-    `Olá, ${order.nome}. Separei o fechamento do seu pedido:`,
+    `Oi, ${order.nome}! Separei abaixo o resumo final do seu pedido:`,
     "",
     "📿 *Peça principal*",
     `${order.tipo}${order.tipo === "Brajá" ? ` ${order.fios} fios` : ""}`,
@@ -186,13 +192,14 @@ function buildClientSummary(order, extraItems = [], visibleObs = "") {
     ...(order.urg ? [`Taxa de urgência: ${formatCurrency(parseCurrency(order.taxa))}`] : []),
     ...(order.desconto ? ["Desconto Pix aplicado: 5%"] : []),
     `Total final: ${formatCurrency(getTotal(order))}`,
+    ...(parseCurrency(order.sinal) ? [`Sinal pago: ${formatCurrency(parseCurrency(order.sinal))}`, `Valor restante: ${formatCurrency(getRemaining(order))}`] : []),
     `Pagamento: ${order.pgto}${order.parc ? ` ${order.parc}` : ""}`,
     ...(order.transp ? [`Transportadora: ${order.transp}`] : []),
     ...(order.pconf ? [`Previsão de confecção: ${formatDate(order.pconf)}`] : []),
     ...(order.pent ? [`Previsão de entrega: ${formatDate(order.pent)}`] : []),
     ...(visibleObs ? ["", `📝 Observações: ${visibleObs}`] : []),
     "",
-    "Se estiver tudo certo, seguimos com a produção 🤍",
+    "Se estiver tudo certinho, seguimos com a produção 🤍",
   ];
   if (contact.instagram && order.canal === "Instagram DM") {
     lines.splice(3, 0, `Instagram: @${contact.instagram}`);
@@ -217,6 +224,50 @@ function formatCurrencyInput(value) {
 
 function getStatusHistoryEntry(status) {
   return { id: generateId(), status, at: new Date().toISOString() };
+}
+
+function applyStatusDefaults(order, nextStatus) {
+  const next = { ...order, status: nextStatus };
+  const today = new Date();
+  const iso = today.toISOString().slice(0, 10);
+  if (nextStatus === "Em Produção" && !next.pconf) {
+    const productionDate = new Date(today);
+    productionDate.setDate(productionDate.getDate() + 3);
+    next.pconf = productionDate.toISOString().slice(0, 10);
+  }
+  if (nextStatus === "Postado") {
+    if (!next.pconf) next.pconf = iso;
+    if (!next.pent) {
+      const deliveryDate = new Date(today);
+      deliveryDate.setDate(deliveryDate.getDate() + 7);
+      next.pent = deliveryDate.toISOString().slice(0, 10);
+    }
+  }
+  if (nextStatus === "Concluído" && !next.pent) next.pent = iso;
+  return next;
+}
+
+function buildTrackingLink(order) {
+  const code = (order.rastreio || "").trim();
+  if (!code) return "";
+  if (order.transp === "Correios") return `https://rastreamento.correios.com.br/app/index.php?objeto=${encodeURIComponent(code)}`;
+  return "";
+}
+
+function buildTrackingMessage(order) {
+  const contact = splitContact(order.contato);
+  const trackingLink = buildTrackingLink(order);
+  return [
+    `Oi, ${order.nome}! Seu pedido já foi enviado 🤍`,
+    "",
+    `Transportadora: ${order.transp || "Não informada"}`,
+    `Código de rastreio: ${order.rastreio || "Não informado"}`,
+    ...(trackingLink ? ["", `Acompanhe aqui: ${trackingLink}`] : []),
+    ...(order.pent ? ["", `Previsão de entrega: ${formatDate(order.pent)}`] : []),
+    "",
+    "Qualquer dúvida, fico à disposição.",
+    ...(contact.instagram ? [`Instagram: @${contact.instagram}`] : []),
+  ].join("\n");
 }
 function formatDate(date) {
   if (!date) return "—";
@@ -256,10 +307,10 @@ function Section({ title, children }) {
   return <div style={{ marginBottom: 22 }}><div style={{ fontSize: 12, fontWeight: 800, color: THEME.primary, letterSpacing: 0.9, marginBottom: 12, paddingBottom: 8, borderBottom: `1px solid ${THEME.br}`, fontFamily: "Poppins, sans-serif" }}>{title}</div>{children}</div>;
 }
 
-function Form({ init, onSave, onCancel, isEdit }) {
+function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [] }) {
   const parsedInit = splitOrderNotes(init?.obs);
   const parsedContact = splitContact(init?.contato);
-  const [form, setForm] = useState({ ...EMPTY, ...(init || {}), contato: parsedContact.contato, instagram: parsedContact.instagram, obs: parsedInit.visibleObs });
+  const [form, setForm] = useState({ ...EMPTY, ...(init || {}), contato: parsedContact.contato, instagram: parsedContact.instagram, obs: parsedInit.visibleObs, obsInterna: parsedInit.internalObs || "" });
   const [images, setImages] = useState(init?.imgs || []);
   const [extraItems, setExtraItems] = useState(parsedInit.extraItems);
   const [statusHistory, setStatusHistory] = useState(parsedInit.statusHistory.length ? parsedInit.statusHistory : [getStatusHistoryEntry((init || EMPTY).status)]);
@@ -271,6 +322,10 @@ function Form({ init, onSave, onCancel, isEdit }) {
   const detailOptions = MATERIAL_DETAILS[form.mat] || [];
 
   const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const handleStatusChange = (value) => {
+    setForm((prev) => applyStatusDefaults(prev, value));
+    setStatusHistory((prev) => prev.at(-1)?.status === value ? prev : [...prev, getStatusHistoryEntry(value)]);
+  };
 
   const handleImages = async (files) => {
     const remaining = 4 - images.length;
@@ -320,7 +375,7 @@ function Form({ init, onSave, onCancel, isEdit }) {
       ...form,
       id,
       contato: buildContact(form.contato, form.instagram),
-      obs: buildOrderNotes(form.obs, extraItems, statusHistory),
+      obs: buildOrderNotes(form.obs, extraItems, statusHistory, form.obsInterna),
       imgs: images,
       criado_em: form.criado_em || new Date().toISOString(),
       upd: new Date().toISOString(),
@@ -366,10 +421,13 @@ function Form({ init, onSave, onCancel, isEdit }) {
 
       <Section title="👤 Cliente">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Field label="Nome *"><input value={form.nome} onChange={(event) => setField("nome", event.target.value)} style={inputStyle} placeholder="Nome completo" /></Field>
+          <Field label="Nome *"><input list="clientes-sugestoes" value={form.nome} onChange={(event) => setField("nome", event.target.value)} style={inputStyle} placeholder="Nome completo" /></Field>
           <Field label="Contato"><input value={form.contato} onChange={(event) => setField("contato", formatPhone(event.target.value))} style={inputStyle} placeholder="(11) 99999-9999" /></Field>
         </div>
         <Field label="Instagram @"><input value={form.instagram || ""} onChange={(event) => setField("instagram", event.target.value.replace(/^@+/, ""))} style={inputStyle} placeholder="usuario" /></Field>
+        <datalist id="clientes-sugestoes">
+          {customerSuggestions.map((item, index) => <option key={`${item.nome}-${index}`} value={item.nome} />)}
+        </datalist>
         <Field label="Canal"><Segmented opts={CHANNELS} val={form.canal} onChange={(value) => setField("canal", value)} /></Field>
       </Section>
 
@@ -448,9 +506,15 @@ function Form({ init, onSave, onCancel, isEdit }) {
           ))}
         </div>
         {form.urg && <Field label="Taxa Urgência (R$)"><input value={form.taxa} onChange={(event) => setField("taxa", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 30,00" /></Field>}
+        <Field label="Sinal pago (R$)"><input value={form.sinal || ""} onChange={(event) => setField("sinal", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 50,00" /></Field>
         <Field label="Total Final">
           <div style={{ ...inputStyle, display: "flex", alignItems: "center", minHeight: 46, fontWeight: 700, color: THEME.primary, background: THEME.primarySoft }}>
             {formatCurrency(getTotal(form))}
+          </div>
+        </Field>
+        <Field label="Valor Restante">
+          <div style={{ ...inputStyle, display: "flex", alignItems: "center", minHeight: 46, fontWeight: 700, color: THEME.tm, background: "#FFFFFF" }}>
+            {formatCurrency(getRemaining(form))}
           </div>
         </Field>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -494,7 +558,8 @@ function Form({ init, onSave, onCancel, isEdit }) {
 
       <Section title="📝 Observações e Status">
         <Field label="Observações" full><textarea value={form.obs} onChange={(event) => setField("obs", event.target.value)} style={{ ...inputStyle, height: 75, resize: "vertical", lineHeight: 1.6 }} placeholder="Detalhes especiais, urgências..." /></Field>
-        <Field label="Status"><Segmented opts={STATUS_LIST} val={form.status} onChange={(value) => { setField("status", value); setStatusHistory((prev) => prev.at(-1)?.status === value ? prev : [...prev, getStatusHistoryEntry(value)]); }} small /></Field>
+        <Field label="Observação interna" full><textarea value={form.obsInterna || ""} onChange={(event) => setField("obsInterna", event.target.value)} style={{ ...inputStyle, height: 75, resize: "vertical", lineHeight: 1.6, background: "#FFFDF7" }} placeholder="Anotações só para você. Não entram no resumo do cliente." /></Field>
+        <Field label="Status"><Segmented opts={STATUS_LIST} val={form.status} onChange={handleStatusChange} small /></Field>
       </Section>
 
       <Section title="💼 Resumo Financeiro">
@@ -504,6 +569,7 @@ function Form({ init, onSave, onCancel, isEdit }) {
             ["Frete", formatCurrency(parseCurrency(form.frete))],
             ["Urgência", formatCurrency(form.urg ? parseCurrency(form.taxa) : 0)],
             ["Total", formatCurrency(getTotal(form))],
+            ["Restante", formatCurrency(getRemaining(form))],
           ].map(([label, value]) => (
             <div key={label} style={{ background: label === "Total" ? THEME.primarySoft : THEME.soft, border: `1px solid ${THEME.br}`, borderRadius: 12, padding: "10px 12px" }}>
               <div style={{ ...labelStyle, marginBottom: 4 }}>{label}</div>
@@ -591,7 +657,7 @@ function Form({ init, onSave, onCancel, isEdit }) {
   );
 }
 
-function Card({ order, onUpdate, onDelete, onDuplicate }) {
+function Card({ order, onUpdate, onDelete, onDuplicate, onToast }) {
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(false);
   const [viewer, setViewer] = useState(null);
@@ -600,11 +666,14 @@ function Card({ order, onUpdate, onDelete, onDuplicate }) {
   const parsedNotes = splitOrderNotes(order.obs);
   const visibleObs = parsedNotes.visibleObs;
   const extraItems = parsedNotes.extraItems;
+  const internalObs = parsedNotes.internalObs;
   const parsedContact = splitContact(order.contato);
   const overdue = isOverdue(order);
   const dueSoon = isDueSoon(order);
   const clientSummary = buildClientSummary(order, extraItems, visibleObs);
   const dueLabel = getDueLabel(order);
+  const trackingLink = buildTrackingLink(order);
+  const trackingMessage = buildTrackingMessage(order);
 
   if (edit) {
     return <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 18, padding: 20, marginBottom: 10, boxShadow: "0 18px 40px rgba(31,41,55,0.08)" }}><Form init={order} isEdit onSave={(updated) => { onUpdate(updated); setEdit(false); }} onCancel={() => setEdit(false)} /></div>;
@@ -647,6 +716,7 @@ function Card({ order, onUpdate, onDelete, onDuplicate }) {
       `Frete: ${formatCurrency(parseCurrency(order.frete))}`,
       `Taxa urgência: ${formatCurrency(order.urg ? parseCurrency(order.taxa) : 0)}`,
       `Total final: ${formatCurrency(getTotal(order))}`,
+      ...(parseCurrency(order.sinal) ? [`Sinal pago: ${formatCurrency(parseCurrency(order.sinal))}`, `Valor restante: ${formatCurrency(getRemaining(order))}`] : []),
       `Pagamento: ${order.pgto}${order.parc ? ` ${order.parc}` : ""}${order.desconto ? " com desconto Pix" : ""}`,
       `Transp: ${order.transp || "—"}`,
       `Confecção: ${formatDate(order.pconf)} | Entrega: ${formatDate(order.pent)}`,
@@ -656,9 +726,32 @@ function Card({ order, onUpdate, onDelete, onDuplicate }) {
       `Status: ${order.status}`,
     ];
     await navigator.clipboard.writeText(lines.join("\n"));
+    onToast?.("Pedido copiado.");
   };
   const copyClientSummary = async () => {
     await navigator.clipboard.writeText(clientSummary);
+    onToast?.("Resumo do cliente copiado.");
+  };
+  const copyTrackingMessage = async () => {
+    await navigator.clipboard.writeText(trackingMessage);
+    onToast?.("Mensagem de rastreio copiada.");
+  };
+  const updateStatus = async (nextStatus) => {
+    const currentStatus = order.status;
+    if (currentStatus === nextStatus) return;
+    if (["Concluído", "Cancelado"].includes(nextStatus)) {
+      const ok = window.confirm(`Confirmar mudança para "${nextStatus}"?`);
+      if (!ok) return;
+    }
+    const nextOrder = applyStatusDefaults(order, nextStatus);
+    const nextHistory = parsedNotes.statusHistory?.at(-1)?.status === nextStatus ? parsedNotes.statusHistory : [...(parsedNotes.statusHistory || []), getStatusHistoryEntry(nextStatus)];
+    const { error } = await supabase.from("pedidos").update({
+      status: nextOrder.status,
+      pconf: nextOrder.pconf,
+      pent: nextOrder.pent,
+      obs: buildOrderNotes(visibleObs, extraItems, nextHistory),
+    }).eq("id", order.id);
+    if (!error) onUpdate({ ...nextOrder, obs: buildOrderNotes(visibleObs, extraItems, nextHistory) });
   };
 
   const handleDelete = async () => {
@@ -679,7 +772,7 @@ function Card({ order, onUpdate, onDelete, onDuplicate }) {
           {overdue && <span style={{ fontSize: 10, background: "#F97316", color: "#FFFFFF", padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif" }}>ATRASADO</span>}
           {!overdue && dueSoon && <span style={{ fontSize: 10, background: "#FBBF24", color: "#FFFFFF", padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif" }}>PRAZO</span>}
           {order.urg && <span style={{ fontSize: 10, background: "#FFF7E2", color: THEME.gold, padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif", border: `1px solid #EED9B0` }}>⚡</span>}
-          <select value={order.status} onChange={async (event) => { event.stopPropagation(); const nextStatus = event.target.value; await supabase.from("pedidos").update({ status: nextStatus }).eq("id", order.id); onUpdate({ ...order, status: nextStatus }); }} onClick={(event) => event.stopPropagation()} style={{ border: "none", background: statusColors.bg, color: statusColors.cl, padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer", outline: "none", fontFamily: "Poppins, sans-serif" }}>
+          <select value={order.status} onChange={async (event) => { event.stopPropagation(); await updateStatus(event.target.value); }} onClick={(event) => event.stopPropagation()} style={{ border: "none", background: statusColors.bg, color: statusColors.cl, padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer", outline: "none", fontFamily: "Poppins, sans-serif" }}>
             {STATUS_LIST.map((status) => <option key={status} value={status}>{STATUS_COLORS[status].em} {status}</option>)}
           </select>
           <span style={{ color: THEME.tl, fontSize: 11 }}>{open ? "▲" : "▼"}</span>
@@ -729,6 +822,21 @@ function Card({ order, onUpdate, onDelete, onDuplicate }) {
             </div>
           )}
           {visibleObs && <div style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 13, color: THEME.tm, lineHeight: 1.6, fontFamily: "Poppins, sans-serif", whiteSpace: "pre-wrap" }}><strong>Obs:</strong> {visibleObs}</div>}
+          {internalObs && <div style={{ background: "#FFFDF7", border: `1px solid ${THEME.br}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 13, color: THEME.tm, lineHeight: 1.6, fontFamily: "Poppins, sans-serif", whiteSpace: "pre-wrap" }}><strong>Obs. interna:</strong> {internalObs}</div>}
+          {order.rastreio && (
+            <div style={{ background: "#FFFFFF", border: `1px solid ${THEME.br}`, borderRadius: 14, padding: "14px 16px", marginBottom: 12, boxShadow: "0 10px 24px rgba(31,41,55,0.05)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <div style={{ ...labelStyle, marginBottom: 0, color: THEME.primary }}>Rastreio para cliente</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button type="button" onClick={copyTrackingMessage} style={{ padding: "7px 12px", borderRadius: 10, border: `1px solid ${THEME.primary}`, background: "#FFFFFF", color: THEME.primary, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Copiar mensagem</button>
+                  {trackingLink && <a href={trackingLink} target="_blank" rel="noreferrer" style={{ padding: "7px 12px", borderRadius: 10, border: `1px solid ${THEME.br}`, background: "#FFFFFF", color: THEME.tm, fontSize: 12, fontWeight: 700, textDecoration: "none", fontFamily: "Poppins, sans-serif" }}>Abrir rastreio</a>}
+                </div>
+              </div>
+              <div style={{ fontSize: 13, color: THEME.tm, lineHeight: 1.7, whiteSpace: "pre-wrap", fontFamily: "Poppins, sans-serif" }}>
+                {trackingMessage}
+              </div>
+            </div>
+          )}
           <div style={{ background: "#FFFFFF", border: `1px solid ${THEME.br}`, borderRadius: 14, padding: "14px 16px", marginBottom: 12, boxShadow: "0 10px 24px rgba(31,41,55,0.05)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 10 }}>
               <div style={{ ...labelStyle, marginBottom: 0, color: THEME.primary }}>Resumo para cliente</div>
@@ -740,6 +848,8 @@ function Card({ order, onUpdate, onDelete, onDuplicate }) {
           </div>
           {images.length > 0 && <div style={{ marginBottom: 13 }}><div style={{ ...labelStyle, marginBottom: 7 }}>📷 Referências</div><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{images.map((image, index) => <div key={index} onClick={() => setViewer(image)} style={{ width: 70, height: 70, borderRadius: 8, overflow: "hidden", cursor: "zoom-in", border: `1px solid ${THEME.br}`, flexShrink: 0 }}><img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>)}</div></div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            {order.status !== "Postado" && <button type="button" onClick={() => updateStatus("Postado")} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.primary}`, background: THEME.primarySoft, color: THEME.primary, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Marcar postado</button>}
+            {order.status !== "Concluído" && <button type="button" onClick={() => updateStatus("Concluído")} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.gold}`, background: "#FFF9F0", color: THEME.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Concluir</button>}
             <button type="button" onClick={copy} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.br}`, background: "transparent", color: THEME.tm, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>📋 Copiar</button>
             <button type="button" onClick={() => onDuplicate(order)} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.primary}`, background: "transparent", color: THEME.primary, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>⧉ Duplicar</button>
             <button type="button" onClick={() => setEdit(true)} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.gold}`, background: "transparent", color: THEME.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>✏️ Editar</button>
@@ -753,12 +863,12 @@ function Card({ order, onUpdate, onDelete, onDuplicate }) {
 }
 
 export default function App() {
-  const [tab, setTab] = useState("novo");
+  const [tab, setTab] = useState(() => window.localStorage.getItem("umbando_tab") || "novo");
   const [orders, setOrders] = useState([]);
   const [loaded, setLoaded] = useState(false);
-  const [filter, setFilter] = useState("Todos");
-  const [search, setSearch] = useState("");
-  const [deadlineFilter, setDeadlineFilter] = useState("Todos");
+  const [filter, setFilter] = useState(() => window.localStorage.getItem("umbando_filter") || "Todos");
+  const [search, setSearch] = useState(() => window.localStorage.getItem("umbando_search") || "");
+  const [deadlineFilter, setDeadlineFilter] = useState(() => window.localStorage.getItem("umbando_deadline_filter") || "Todos");
   const [toast, setToast] = useState("");
   const [draftOrder, setDraftOrder] = useState(null);
   useEffect(() => {
@@ -767,6 +877,10 @@ export default function App() {
       setLoaded(true);
     });
   }, []);
+  useEffect(() => { window.localStorage.setItem("umbando_tab", tab); }, [tab]);
+  useEffect(() => { window.localStorage.setItem("umbando_filter", filter); }, [filter]);
+  useEffect(() => { window.localStorage.setItem("umbando_search", search); }, [search]);
+  useEffect(() => { window.localStorage.setItem("umbando_deadline_filter", deadlineFilter); }, [deadlineFilter]);
   const showToast = (message) => {
     setToast(message);
     window.clearTimeout(window.__umbandoToastTimer);
@@ -830,7 +944,7 @@ export default function App() {
     if (deadlineFilter === "Próximos 2 dias") deadlineMatches = isDueSoon(order);
     return statusMatches && searchMatches && deadlineMatches;
   });
-  const inProgress = orders.filter((order) => ["Novo", "Aguardando Pagamento", "Em Produção"].includes(order.status)).length;
+  const inProgress = orders.filter((order) => ["Novo", "Em Produção"].includes(order.status)).length;
   const revenueMonth = orders.filter((order) => {
     const d = order.criado_em ? new Date(order.criado_em) : null;
     const now = new Date();
@@ -838,6 +952,7 @@ export default function App() {
   }).reduce((sum, order) => sum + getTotal(order), 0);
   const overdueCount = orders.filter(isOverdue).length;
   const channelCounts = CHANNELS.map((channel) => [channel, orders.filter((order) => order.canal === channel).length]);
+  const customerSuggestions = Array.from(new Map(orders.map((order) => [order.nome, { nome: order.nome }])).values()).filter((item) => item.nome);
   const sortedKanbanOrders = (status) =>
     orders
       .filter((order) => order.status === status)
@@ -871,7 +986,7 @@ export default function App() {
           </div>
         )}
         {!loaded ? <div style={{ textAlign: "center", padding: 80, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>⏳ Carregando pedidos...</div> : <>
-          {tab === "novo" && <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 22, padding: "22px 20px", boxShadow: "0 22px 60px rgba(31,41,55,0.08)" }}><Form init={draftOrder} onSave={(order) => { saveOrder(order); setTab("lista"); }} onCancel={draftOrder ? () => { setDraftOrder(null); setTab("lista"); } : undefined} /></div>}
+          {tab === "novo" && <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 22, padding: "22px 20px", boxShadow: "0 22px 60px rgba(31,41,55,0.08)" }}><Form init={draftOrder} customerSuggestions={customerSuggestions} onSave={(order) => { saveOrder(order); setTab("lista"); }} onCancel={draftOrder ? () => { setDraftOrder(null); setTab("lista"); } : undefined} /></div>}
           {tab === "lista" && (
             <div>
               <div style={{ marginBottom: 14, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -888,7 +1003,7 @@ export default function App() {
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{["Todos", ...STATUS_LIST].map((status) => { const colors = status !== "Todos" ? STATUS_COLORS[status] : null; return <button key={status} type="button" onClick={() => setFilter(status)} style={{ background: filter === status ? THEME.primary : colors?.bg || "#FFFFFF", color: filter === status ? "#FFFFFF" : colors?.cl || THEME.tm, border: `1px solid ${filter === status ? THEME.primary : THEME.br}`, borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>{status} ({status === "Todos" ? orders.length : counts[status] || 0})</button>; })}</div>
               </div>
-              {filteredOrders.length === 0 ? <div style={{ textAlign: "center", padding: "60px 20px", background: THEME.card, borderRadius: 18, border: `1px dashed ${THEME.br}`, color: THEME.tl }}><div style={{ fontSize: 34, marginBottom: 10 }}>🔮</div><div style={{ fontSize: 16, fontWeight: 700, color: THEME.tm, marginBottom: 6, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Nenhum pedido ainda" : "Nenhum resultado"}</div><div style={{ fontSize: 13, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Crie o primeiro na aba Novo" : "Tente outros filtros"}</div></div> : filteredOrders.map((order) => <Card key={order.id} order={order} onUpdate={updateOrder} onDelete={deleteOrder} onDuplicate={duplicateOrder} />)}
+              {filteredOrders.length === 0 ? <div style={{ textAlign: "center", padding: "60px 20px", background: THEME.card, borderRadius: 18, border: `1px dashed ${THEME.br}`, color: THEME.tl }}><div style={{ fontSize: 34, marginBottom: 10 }}>🔮</div><div style={{ fontSize: 16, fontWeight: 700, color: THEME.tm, marginBottom: 6, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Nenhum pedido ainda" : "Nenhum resultado"}</div><div style={{ fontSize: 13, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Crie o primeiro na aba Novo" : "Tente outros filtros"}</div></div> : filteredOrders.map((order) => <Card key={order.id} order={order} onUpdate={updateOrder} onDelete={deleteOrder} onDuplicate={duplicateOrder} onToast={showToast} />)}
             </div>
           )}
           {tab === "kanban" && <div style={{ overflowX: "auto", paddingBottom: 8 }}><div style={{ display: "flex", gap: 10, minWidth: "max-content" }}>{STATUS_LIST.map((status) => { const colors = STATUS_COLORS[status]; const list = sortedKanbanOrders(status); return <div key={status} style={{ width: 195, flexShrink: 0 }}><div style={{ background: colors.bg, color: colors.cl, padding: "8px 12px", borderRadius: "14px 14px 0 0", fontWeight: 700, fontSize: 12, display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "Poppins, sans-serif", border: `1px solid ${THEME.br}` }}><span>{colors.em} {status}</span><span style={{ background: "rgba(255,255,255,0.65)", borderRadius: 20, padding: "2px 8px" }}>{list.length}</span></div><div style={{ background: "#FCFBF8", border: `1px solid ${THEME.br}`, borderTop: "none", borderRadius: "0 0 14px 14px", padding: 8, minHeight: 100 }}>{list.length === 0 ? <div style={{ textAlign: "center", padding: "24px 10px", color: THEME.tl, fontSize: 12, fontFamily: "Poppins, sans-serif" }}>Vazio</div> : list.map((order) => <div key={order.id} onClick={() => { setSearch(order.nome); setFilter("Todos"); setTab("lista"); }} style={{ background: isOverdue(order) ? "#FFF4E8" : THEME.card, border: `1px solid ${isOverdue(order) ? "#FDBA74" : THEME.br}`, borderRadius: 12, padding: "10px 12px", marginBottom: 8, cursor: "pointer", boxShadow: "0 8px 18px rgba(31,41,55,0.05)" }}><div style={{ fontWeight: 700, fontSize: 13, color: THEME.tm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "Poppins, sans-serif" }}>{order.nome || "Cliente"}</div><div style={{ fontSize: 11, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>{order.tipo}{order.tipo === "Brajá" ? ` ${order.fios}f` : ""} · {order.mat} · {order.tam}</div>{order.pent && <div style={{ fontSize: 10, color: isOverdue(order) ? "#C2410C" : THEME.tl, marginTop: 4, fontFamily: "Poppins, sans-serif" }}>{isOverdue(order) ? "Atrasado: " : "Entrega: "}{formatDate(order.pent)}</div>}{order.valor && <div style={{ fontSize: 12, fontWeight: 700, color: THEME.primary, marginTop: 4, fontFamily: "Poppins, sans-serif" }}>{formatCurrency(getTotal(order))}</div>}{order.urg && <div style={{ fontSize: 10, color: THEME.gold, fontWeight: 700, marginTop: 2, fontFamily: "Poppins, sans-serif" }}>⚡ URGENTE</div>}</div>)}</div></div>; })}</div></div>}
