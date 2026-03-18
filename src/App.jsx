@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "./supabase";
 
-const STATUS_LIST = ["Novo", "Em ProduÃ§Ã£o", "Postado", "ConcluÃ­do", "Cancelado"];
+const STATUS_LIST = ["Novo", "Em Produ\u00e7\u00e3o", "Postado", "Conclu\u00eddo", "Cancelado"];
 const STATUS_COLORS = {
   Novo: { bg: "#F3F4F6", cl: "#374151", em: "N" },
-  "Em ProduÃ§Ã£o": { bg: "#FEE2E2", cl: "#991B1B", em: "P" },
+  "Em Produ\u00e7\u00e3o": { bg: "#FEE2E2", cl: "#991B1B", em: "P" },
   Postado: { bg: "#DBEAFE", cl: "#1E40AF", em: "E" },
-  ConcluÃ­do: { bg: "#DCFCE7", cl: "#166534", em: "C" },
+  "Conclu\u00eddo": { bg: "#DCFCE7", cl: "#166534", em: "C" },
   Cancelado: { bg: "#F1F5F9", cl: "#64748B", em: "X" },
 };
 const MATERIALS = ["MiÃ§anga", "Cristal", "Porcelana", "Semente"];
