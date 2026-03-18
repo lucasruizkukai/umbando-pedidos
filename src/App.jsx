@@ -401,8 +401,9 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
     }
     setSaving(true);
     const id = form.id || generateId();
+    const { instagram, obsInterna, ...dbForm } = form;
     const row = {
-      ...form,
+      ...dbForm,
       id,
       contato: buildContact(form.contato, form.instagram),
       obs: buildOrderNotes(form.obs, extraItems, statusHistory, form.obsInterna),
