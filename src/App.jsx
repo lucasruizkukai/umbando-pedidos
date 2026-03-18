@@ -483,7 +483,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
             <Segmented opts={channels} val={form.canal} onChange={(value) => setField("canal", value)} small />
           </div>
           <textarea value={conversation} onChange={(event) => setConversation(event.target.value)} placeholder={`Cole a conversa do ${form.canal}...\n\nEx: Quero brajÃ¡ 7 fios miÃ§anga jablonex, vermelho e preto, 7 firmas meteoro rajada, pingente tridente prateado, 70cm, pix R$180`} style={{ ...inputStyle, height: 160, resize: "vertical", lineHeight: 1.7 }} />
-          <div style={{ fontSize: 12, color: THEME.tl, marginTop: 8 }}>Essa funÃ§Ã£o usa uma API no Vercel. Se nÃ£o houver chave configurada, o restante do sistema continua funcionando no modo manual.</div>
+          <div style={{ fontSize: 12, color: THEME.tl, marginTop: 8 }}>Essa funcao usa uma API no Vercel. Se nao houver chave configurada, o restante do sistema continua funcionando no modo manual.</div>
           <button type="button" onClick={extractWithAI} disabled={aiLoading || !conversation.trim()} style={{ width: "100%", marginTop: 10, padding: "13px", borderRadius: 10, border: "none", background: aiLoading || !conversation.trim() ? "#D5C5A0" : "linear-gradient(135deg,#C8853A,#E8B96A)", color: "#fff", fontSize: 14, fontWeight: 700, cursor: aiLoading || !conversation.trim() ? "not-allowed" : "pointer", fontFamily: "Georgia, serif" }}>
             {aiLoading ? "â³ Analisando..." : "âœ¨ Extrair Pedido"}
           </button>
@@ -492,11 +492,11 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
 
       {!AI_ENABLED && (
         <div style={{ marginBottom: 20, background: "#FFFFFF", border: `1px solid ${THEME.br}`, borderRadius: 14, padding: "13px 15px", color: THEME.tl, fontSize: 13, lineHeight: 1.6, fontFamily: "Poppins, sans-serif" }}>
-          A extraÃ§Ã£o com IA estÃ¡ temporariamente desativada. O cadastro manual continua funcionando normalmente.
+          A extracao com IA esta temporariamente desativada. O cadastro manual continua funcionando normalmente.
         </div>
       )}
 
-      <Section title="ðŸ‘¤ Cliente">
+      <Section title="Cliente">
         <div style={twoCol}>
           <Field label="Nome *"><input list="clientes-sugestoes" value={form.nome} onChange={(event) => setField("nome", event.target.value)} style={inputStyle} placeholder="Nome completo" /></Field>
           <Field label="Contato"><input value={form.contato} onChange={(event) => setField("contato", formatPhone(event.target.value))} style={inputStyle} placeholder="(11) 99999-9999" /></Field>
@@ -508,7 +508,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
         <Field label="Canal"><Segmented opts={channels} val={form.canal} onChange={(value) => setField("canal", value)} /></Field>
       </Section>
 
-      <Section title="ðŸ“¿ ConstruÃ§Ã£o da PeÃ§a">
+      <Section title="Construcao da Peca">
         <Field label="Tipo de PeÃ§a">
           <Segmented opts={["Guia", "BrajÃ¡"]} val={form.tipo} onChange={(value) => { setField("tipo", value); if (value === "Guia") setField("fios", "1"); }} />
         </Field>
@@ -561,7 +561,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
         </div>
       </Section>
 
-      <Section title="ðŸ’° Comercial e Envio">
+      <Section title="Comercial e Envio">
         <div style={twoCol}>
           <Field label="Valor Total (R$)"><input value={form.valor} onChange={(event) => setField("valor", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 150,00" /></Field>
           <Field label="Pagamento"><Segmented opts={["Pix", "CartÃ£o"]} val={form.pgto} onChange={(value) => setField("pgto", value)} /></Field>
@@ -604,7 +604,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
         <Field label="CÃ³digo de Rastreio" full><input value={form.rastreio} onChange={(event) => setField("rastreio", event.target.value)} style={inputStyle} placeholder="Ex: BR123456789BR" /></Field>
       </Section>
 
-      <Section title="ðŸ“· Imagens de ReferÃªncia">
+      <Section title="Imagens de Referencia">
         <div onClick={() => fileRef.current?.click()} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); handleImages(event.dataTransfer.files); }} style={{ border: `2px dashed ${THEME.br}`, borderRadius: 14, padding: "18px 16px", textAlign: "center", cursor: "pointer", background: THEME.panel, marginBottom: 10 }}>
           <div style={{ fontSize: 22, marginBottom: 4 }}>ðŸ“Ž</div>
           <div style={{ fontWeight: 600, color: THEME.tm, fontSize: 14, fontFamily: "Poppins, sans-serif" }}>Clique ou arraste as imagens</div>
@@ -627,13 +627,13 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
         )}
       </Section>
 
-      <Section title="ðŸ“ ObservaÃ§Ãµes e Status">
+      <Section title="Observacoes e Status">
         <Field label="ObservaÃ§Ãµes" full><textarea value={form.obs} onChange={(event) => setField("obs", event.target.value)} style={{ ...inputStyle, height: 75, resize: "vertical", lineHeight: 1.6 }} placeholder="Detalhes especiais, urgÃªncias..." /></Field>
         <Field label="ObservaÃ§Ã£o interna" full><textarea value={form.obsInterna || ""} onChange={(event) => setField("obsInterna", event.target.value)} style={{ ...inputStyle, height: 75, resize: "vertical", lineHeight: 1.6, background: "#FFFDF7" }} placeholder="AnotaÃ§Ãµes sÃ³ para vocÃª. NÃ£o entram no resumo do cliente." /></Field>
         <Field label="Status"><Segmented opts={STATUS_LIST} val={form.status} onChange={handleStatusChange} small /></Field>
       </Section>
 
-      <Section title="ðŸ’¼ Resumo Financeiro">
+      <Section title="Resumo Financeiro">
         <div style={fourCol}>
           {[
             ["Produto", formatCurrency(parseCurrency(form.valor))],
@@ -649,7 +649,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
         </div>
       </Section>
 
-      <Section title="ðŸ§© PeÃ§as Adicionais">
+      <Section title="Pecas Adicionais">
         <div style={{ marginBottom: 12, color: THEME.tl, fontSize: 13, fontFamily: "Poppins, sans-serif" }}>
           Use essa Ã¡rea quando o mesmo cliente comprar mais de uma peÃ§a no mesmo pedido.
         </div>
@@ -744,6 +744,7 @@ function Card({ order, onUpdate, onDelete, onDuplicate, onToast, isMobile = fals
   const dueLabel = getDueLabel(order);
   const trackingLink = buildTrackingLink(order);
   const trackingMessage = buildTrackingMessage(order);
+  const clientInitial = (order.nome || "C").trim().charAt(0).toUpperCase();
 
   if (edit) {
     return <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 18, padding: 20, marginBottom: 10, boxShadow: "0 18px 40px rgba(31,41,55,0.08)" }}><Form init={order} isEdit isMobile={isMobile} onSave={(updated) => { onUpdate(updated); setEdit(false); }} onCancel={() => setEdit(false)} /></div>;
@@ -832,17 +833,17 @@ function Card({ order, onUpdate, onDelete, onDuplicate, onToast, isMobile = fals
   return (
     <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 18, marginBottom: 12, overflow: "hidden", boxShadow: "0 18px 40px rgba(31,41,55,0.08)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: overdue ? "#FFF4E8" : THEME.panel, borderBottom: open ? `1px solid ${THEME.br}` : "none", cursor: "pointer" }} onClick={() => setOpen((value) => !value)}>
-        <div style={{ width: 38, height: 38, borderRadius: "50%", background: `linear-gradient(135deg,${THEME.primary},${THEME.primaryDark})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, color: "#FFFFFF" }}>ðŸ”®</div>
+        <div style={{ width: 38, height: 38, borderRadius: "50%", background: `linear-gradient(135deg,${THEME.primary},${THEME.primaryDark})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, color: "#FFFFFF", fontWeight: 800, fontFamily: "Poppins, sans-serif" }}>{clientInitial}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: THEME.tm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "Poppins, sans-serif" }}>{order.nome || "Cliente"}</div>
-          <div style={{ fontSize: 12, color: THEME.tl, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{order.tipo}{order.tipo === "BrajÃ¡" ? ` ${order.fios}f` : ""} Â· {order.mat}{order.matd ? ` ${order.matd}` : ""} Â· {order.tam}{parsedContact.contato ? ` Â· ${parsedContact.contato}` : parsedContact.instagram ? ` Â· @${parsedContact.instagram}` : ""}</div>
+          <div style={{ fontSize: 12, color: THEME.tl, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cleanText(order.tipo)}{cleanText(order.tipo) === "Braja" ? ` ${order.fios}f` : ""} · {cleanText(order.mat)}{order.matd ? ` ${cleanText(order.matd)}` : ""} · {cleanText(order.tam)}{parsedContact.contato ? ` · ${parsedContact.contato}` : parsedContact.instagram ? ` · @${parsedContact.instagram}` : ""}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
           {overdue && <span style={{ fontSize: 10, background: "#F97316", color: "#FFFFFF", padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif" }}>ATRASADO</span>}
           {!overdue && dueSoon && <span style={{ fontSize: 10, background: "#FBBF24", color: "#FFFFFF", padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif" }}>PRAZO</span>}
           {order.urg && <span style={{ fontSize: 10, background: "#FFF7E2", color: THEME.gold, padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif", border: `1px solid #EED9B0` }}>âš¡</span>}
           <select value={order.status} onChange={async (event) => { event.stopPropagation(); await updateStatus(event.target.value); }} onClick={(event) => event.stopPropagation()} style={{ border: "none", background: statusColors.bg, color: statusColors.cl, padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer", outline: "none", fontFamily: "Poppins, sans-serif" }}>
-            {STATUS_LIST.map((status) => <option key={status} value={status}>{STATUS_COLORS[status].em} {status}</option>)}
+            {STATUS_LIST.map((status) => <option key={status} value={status}>{cleanText(status)}</option>)}
           </select>
           <span style={{ color: THEME.tl, fontSize: 11 }}>{open ? "â–²" : "â–¼"}</span>
         </div>
