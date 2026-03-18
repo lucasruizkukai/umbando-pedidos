@@ -470,7 +470,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
   return (
     <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        {[["manual", "âœï¸ Manual"], ["ia", AI_ENABLED ? "âœ¨ Extrair com IA" : "ðŸ”’ IA em breve"]].map(([key, label]) => (
+        {[["manual", "Manual"], ["ia", AI_ENABLED ? "Extrair com IA" : "IA em breve"]].map(([key, label]) => (
           <button key={key} type="button" disabled={key === "ia" && !AI_ENABLED} onClick={() => setMode(key)} style={{ flex: 1, padding: "12px", borderRadius: 14, fontSize: 13, fontWeight: 700, border: `1px solid ${mode === key ? THEME.primary : THEME.br}`, background: mode === key ? THEME.primary : "#FFFFFF", color: mode === key ? "#FFFFFF" : THEME.tm, cursor: key === "ia" && !AI_ENABLED ? "not-allowed" : "pointer", opacity: key === "ia" && !AI_ENABLED ? 0.6 : 1, fontFamily: "Poppins, sans-serif", boxShadow: mode === key ? "0 14px 30px rgba(78,95,77,0.18)" : "none" }}>
             {label}
           </button>
@@ -482,10 +482,10 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
           <div style={{ marginBottom: 10 }}>
             <Segmented opts={channels} val={form.canal} onChange={(value) => setField("canal", value)} small />
           </div>
-          <textarea value={conversation} onChange={(event) => setConversation(event.target.value)} placeholder={`Cole a conversa do ${form.canal}...\n\nEx: Quero brajÃ¡ 7 fios miÃ§anga jablonex, vermelho e preto, 7 firmas meteoro rajada, pingente tridente prateado, 70cm, pix R$180`} style={{ ...inputStyle, height: 160, resize: "vertical", lineHeight: 1.7 }} />
+          <textarea value={conversation} onChange={(event) => setConversation(event.target.value)} placeholder={`Cole a conversa do ${form.canal}...\n\nEx: Quero braja 7 fios micanga jablonex, vermelho e preto, 7 firmas meteoro rajada, pingente tridente prateado, 70cm, pix R$180`} style={{ ...inputStyle, height: 160, resize: "vertical", lineHeight: 1.7 }} />
           <div style={{ fontSize: 12, color: THEME.tl, marginTop: 8 }}>Essa funcao usa uma API no Vercel. Se nao houver chave configurada, o restante do sistema continua funcionando no modo manual.</div>
           <button type="button" onClick={extractWithAI} disabled={aiLoading || !conversation.trim()} style={{ width: "100%", marginTop: 10, padding: "13px", borderRadius: 10, border: "none", background: aiLoading || !conversation.trim() ? "#D5C5A0" : "linear-gradient(135deg,#C8853A,#E8B96A)", color: "#fff", fontSize: 14, fontWeight: 700, cursor: aiLoading || !conversation.trim() ? "not-allowed" : "pointer", fontFamily: "Georgia, serif" }}>
-            {aiLoading ? "â³ Analisando..." : "âœ¨ Extrair Pedido"}
+            {aiLoading ? "Analisando..." : "Extrair Pedido"}
           </button>
         </div>
       )}
@@ -510,16 +510,16 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
 
       <Section title="Construcao da Peca">
         <Field label="Tipo de PeÃ§a">
-          <Segmented opts={["Guia", "BrajÃ¡"]} val={form.tipo} onChange={(value) => { setField("tipo", value); if (value === "Guia") setField("fios", "1"); }} />
+          <Segmented opts={["Guia", "Braja"]} val={form.tipo} onChange={(value) => { setField("tipo", value); if (value === "Guia") setField("fios", "1"); }} />
         </Field>
-        {form.tipo === "BrajÃ¡" && <Field label="NÃºmero de Fios"><Segmented opts={["3", "5", "7"]} val={form.fios} onChange={(value) => setField("fios", value)} /></Field>}
+        {form.tipo === "Braja" && <Field label="Numero de Fios"><Segmented opts={["3", "5", "7"]} val={form.fios} onChange={(value) => setField("fios", value)} /></Field>}
         <Field label="Material">
           <Segmented opts={MATERIALS} val={form.mat} onChange={(value) => { setField("mat", value); setField("matd", ""); }} />
         </Field>
         {detailOptions.length > 0 && <Field label={MATERIAL_LABELS[form.mat] || "Detalhe"}><Segmented opts={detailOptions} val={form.matd} onChange={(value) => setField("matd", value)} /></Field>}
         <Field label="Cores" full><textarea value={form.cores} onChange={(event) => setField("cores", event.target.value)} style={{ ...inputStyle, minHeight: 72, resize: "vertical", lineHeight: 1.6 }} placeholder="Ex: vermelho, preto e branco alternados" /></Field>
-        {form.tipo === "BrajÃ¡" && <Field label="FinalizaÃ§Ã£o"><Segmented opts={["Fio solto", "Fio tranÃ§ado"]} val={form.fin} onChange={(value) => setField("fin", value)} /></Field>}
-        {form.tipo === "BrajÃ¡" && (
+        {form.tipo === "Braja" && <Field label="Finalizacao"><Segmented opts={["Fio solto", "Fio trancado"]} val={form.fin} onChange={(value) => setField("fin", value)} /></Field>}
+        {form.tipo === "Braja" && (
           <div style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 14, padding: "13px 15px", marginBottom: 13 }}>
             <div style={{ ...labelStyle, marginBottom: 11 }}>ðŸ§¿ Firmas</div>
             <div style={threeCol}>
@@ -535,7 +535,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
           </div>
         )}
         <div style={twoCol}>
-          <Field label="Fio"><Segmented opts={["Nylon", "CordonÃª"]} val={form.fio} onChange={(value) => setField("fio", value)} /></Field>
+          <Field label="Fio"><Segmented opts={["Nylon", "Cordone"]} val={form.fio} onChange={(value) => setField("fio", value)} /></Field>
           <Field label="Tamanho">
             <select value={form.tam} onChange={(event) => setField("tam", event.target.value)} style={inputStyle}>
               {sizes.map((size) => <option key={size} value={size}>{size}</option>)}
@@ -564,25 +564,25 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
       <Section title="Comercial e Envio">
         <div style={twoCol}>
           <Field label="Valor Total (R$)"><input value={form.valor} onChange={(event) => setField("valor", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 150,00" /></Field>
-          <Field label="Pagamento"><Segmented opts={["Pix", "CartÃ£o"]} val={form.pgto} onChange={(value) => setField("pgto", value)} /></Field>
+          <Field label="Pagamento"><Segmented opts={["Pix", "Cartao"]} val={form.pgto} onChange={(value) => setField("pgto", value)} /></Field>
         </div>
-        {form.pgto === "CartÃ£o" && (
+        {form.pgto === "Cartao" && (
           <Field label="Parcelas">
             <select value={form.parc} onChange={(event) => setField("parc", event.target.value)} style={inputStyle}>
-              <option value="">Ã€ vista</option>
+              <option value="">A vista</option>
               {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((count) => <option key={count} value={`${count}x`}>{count}x (juros cliente)</option>)}
             </select>
           </Field>
         )}
         <div style={{ display: "flex", gap: 24, marginBottom: 13 }}>
-          {[["desconto", "ðŸ·ï¸ Desconto 5% Pix"], ["urg", "âš¡ Pedido Urgente"]].map(([key, label]) => (
+          {[["desconto", "Desconto 5% Pix"], ["urg", "Pedido Urgente"]].map(([key, label]) => (
             <label key={key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 14, color: THEME.tm, fontFamily: "Poppins, sans-serif" }}>
               <input type="checkbox" checked={form[key]} onChange={(event) => setField(key, event.target.checked)} style={{ width: 18, height: 18, accentColor: THEME.primary }} />
               {label}
             </label>
           ))}
         </div>
-        {form.urg && <Field label="Taxa UrgÃªncia (R$)"><input value={form.taxa} onChange={(event) => setField("taxa", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 30,00" /></Field>}
+        {form.urg && <Field label="Taxa Urgencia (R$)"><input value={form.taxa} onChange={(event) => setField("taxa", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 30,00" /></Field>}
         <Field label="Total Final">
           <div style={{ ...inputStyle, display: "flex", alignItems: "center", minHeight: 46, fontWeight: 700, color: THEME.primary, background: THEME.primarySoft }}>
             {formatCurrency(getTotal(form))}
@@ -598,17 +598,17 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
           <Field label="Frete (R$)"><input value={form.frete} onChange={(event) => setField("frete", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 25,00" /></Field>
         </div>
         <div style={twoCol}>
-          <Field label="ConfecÃ§Ã£o atÃ©"><input type="date" value={form.pconf} onChange={(event) => setField("pconf", event.target.value)} style={inputStyle} /></Field>
+          <Field label="Confeccao ate"><input type="date" value={form.pconf} onChange={(event) => setField("pconf", event.target.value)} style={inputStyle} /></Field>
           <Field label="Entrega Estimada"><input type="date" value={form.pent} onChange={(event) => setField("pent", event.target.value)} style={inputStyle} /></Field>
         </div>
-        <Field label="CÃ³digo de Rastreio" full><input value={form.rastreio} onChange={(event) => setField("rastreio", event.target.value)} style={inputStyle} placeholder="Ex: BR123456789BR" /></Field>
+        <Field label="Codigo de Rastreio" full><input value={form.rastreio} onChange={(event) => setField("rastreio", event.target.value)} style={inputStyle} placeholder="Ex: BR123456789BR" /></Field>
       </Section>
 
       <Section title="Imagens de Referencia">
         <div onClick={() => fileRef.current?.click()} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); handleImages(event.dataTransfer.files); }} style={{ border: `2px dashed ${THEME.br}`, borderRadius: 14, padding: "18px 16px", textAlign: "center", cursor: "pointer", background: THEME.panel, marginBottom: 10 }}>
-          <div style={{ fontSize: 22, marginBottom: 4 }}>ðŸ“Ž</div>
+          <div style={{ fontSize: 22, marginBottom: 4 }}>+</div>
           <div style={{ fontWeight: 600, color: THEME.tm, fontSize: 14, fontFamily: "Poppins, sans-serif" }}>Clique ou arraste as imagens</div>
-          <div style={{ fontSize: 12, color: THEME.tl, marginTop: 3, fontFamily: "Poppins, sans-serif" }}>AtÃ© 4 fotos Â· JPG, PNG, WEBP</div>
+          <div style={{ fontSize: 12, color: THEME.tl, marginTop: 3, fontFamily: "Poppins, sans-serif" }}>Ate 4 fotos · JPG, PNG, WEBP</div>
           <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(event) => handleImages(event.target.files)} />
         </div>
         {images.length > 0 && (
@@ -628,8 +628,8 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
       </Section>
 
       <Section title="Observacoes e Status">
-        <Field label="ObservaÃ§Ãµes" full><textarea value={form.obs} onChange={(event) => setField("obs", event.target.value)} style={{ ...inputStyle, height: 75, resize: "vertical", lineHeight: 1.6 }} placeholder="Detalhes especiais, urgÃªncias..." /></Field>
-        <Field label="ObservaÃ§Ã£o interna" full><textarea value={form.obsInterna || ""} onChange={(event) => setField("obsInterna", event.target.value)} style={{ ...inputStyle, height: 75, resize: "vertical", lineHeight: 1.6, background: "#FFFDF7" }} placeholder="AnotaÃ§Ãµes sÃ³ para vocÃª. NÃ£o entram no resumo do cliente." /></Field>
+        <Field label="Observacoes" full><textarea value={form.obs} onChange={(event) => setField("obs", event.target.value)} style={{ ...inputStyle, height: 75, resize: "vertical", lineHeight: 1.6 }} placeholder="Detalhes especiais, urgencias..." /></Field>
+        <Field label="Observacao interna" full><textarea value={form.obsInterna || ""} onChange={(event) => setField("obsInterna", event.target.value)} style={{ ...inputStyle, height: 75, resize: "vertical", lineHeight: 1.6, background: "#FFFDF7" }} placeholder="Anotacoes so para voce. Nao entram no resumo do cliente." /></Field>
         <Field label="Status"><Segmented opts={STATUS_LIST} val={form.status} onChange={handleStatusChange} small /></Field>
       </Section>
 
@@ -638,7 +638,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
           {[
             ["Produto", formatCurrency(parseCurrency(form.valor))],
             ["Frete", formatCurrency(parseCurrency(form.frete))],
-            ["UrgÃªncia", formatCurrency(form.urg ? parseCurrency(form.taxa) : 0)],
+            ["Urgencia", formatCurrency(form.urg ? parseCurrency(form.taxa) : 0)],
             ["Total", formatCurrency(getTotal(form))],
           ].map(([label, value]) => (
             <div key={label} style={{ background: label === "Total" ? THEME.primarySoft : THEME.soft, border: `1px solid ${THEME.br}`, borderRadius: 12, padding: "10px 12px" }}>
@@ -651,14 +651,14 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
 
       <Section title="Pecas Adicionais">
         <div style={{ marginBottom: 12, color: THEME.tl, fontSize: 13, fontFamily: "Poppins, sans-serif" }}>
-          Use essa Ã¡rea quando o mesmo cliente comprar mais de uma peÃ§a no mesmo pedido.
+          Use essa area quando o mesmo cliente comprar mais de uma peca no mesmo pedido.
         </div>
         {extraItems.map((item, index) => {
           const detailOptions = MATERIAL_DETAILS[item.mat] || [];
           return (
             <div key={item.id} style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 12, padding: 14, marginBottom: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <div style={{ color: THEME.gold, fontWeight: 700, fontSize: 13, fontFamily: "Poppins, sans-serif" }}>PeÃ§a {index + 2}</div>
+                <div style={{ color: THEME.gold, fontWeight: 700, fontSize: 13, fontFamily: "Poppins, sans-serif" }}>Peca {index + 2}</div>
                 <button
                   type="button"
                   onClick={() => setExtraItems((prev) => prev.filter((extra) => extra.id !== item.id))}
@@ -668,9 +668,9 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
                 </button>
               </div>
               <div style={twoCol}>
-                <Field label="Tipo da peÃ§a">
+                <Field label="Tipo da peca">
                   <Segmented
-                    opts={["Guia", "BrajÃ¡"]}
+                    opts={["Guia", "Braja"]}
                     val={item.tipo}
                     onChange={(value) => setExtraItems((prev) => prev.map((extra) => (extra.id === item.id ? { ...extra, tipo: value } : extra)))}
                   />
@@ -703,7 +703,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
                 </Field>
               </div>
               <Field label="Detalhes" full>
-                <textarea value={item.detalhes} onChange={(event) => setExtraItems((prev) => prev.map((extra) => (extra.id === item.id ? { ...extra, detalhes: event.target.value } : extra)))} style={{ ...inputStyle, height: 72, resize: "vertical", lineHeight: 1.6 }} placeholder="Firmas, pingente, acabamento ou qualquer diferenÃ§a dessa peÃ§a" />
+                <textarea value={item.detalhes} onChange={(event) => setExtraItems((prev) => prev.map((extra) => (extra.id === item.id ? { ...extra, detalhes: event.target.value } : extra)))} style={{ ...inputStyle, height: 72, resize: "vertical", lineHeight: 1.6 }} placeholder="Firmas, pingente, acabamento ou qualquer diferenca dessa peca" />
               </Field>
             </div>
           );
@@ -713,14 +713,14 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
           onClick={() => setExtraItems((prev) => [...prev, createExtraItem()])}
           style={{ width: "100%", padding: "12px", borderRadius: 12, border: `1px dashed ${THEME.br}`, background: "transparent", color: THEME.gold, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}
         >
-          + Adicionar outra peÃ§a ao pedido
+          + Adicionar outra peca ao pedido
         </button>
       </Section>
 
       <div style={{ display: "flex", gap: 10, paddingTop: 4 }}>
         {onCancel && <button type="button" onClick={onCancel} style={{ flex: 1, padding: "12px", borderRadius: 14, border: `1px solid ${THEME.br}`, background: "#FFFFFF", color: THEME.tm, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Cancelar</button>}
         <button type="button" onClick={save} disabled={saving} style={{ flex: 2, padding: "14px", borderRadius: 14, border: "none", background: saving ? "#A8B1A6" : `linear-gradient(135deg,${THEME.primary},${THEME.primaryDark})`, color: "#FFFFFF", fontSize: 15, fontWeight: 800, cursor: saving ? "not-allowed" : "pointer", fontFamily: "Poppins, sans-serif", boxShadow: "0 16px 32px rgba(78,95,77,0.20)" }}>
-          {saving ? "â³ Salvando..." : isEdit ? "ðŸ’¾ Salvar AlteraÃ§Ãµes" : "âœ… Criar Pedido"}
+          {saving ? "Salvando..." : isEdit ? "Salvar Alteracoes" : "Criar Pedido"}
         </button>
       </div>
     </div>
@@ -745,6 +745,7 @@ function Card({ order, onUpdate, onDelete, onDuplicate, onToast, isMobile = fals
   const trackingLink = buildTrackingLink(order);
   const trackingMessage = buildTrackingMessage(order);
   const clientInitial = (order.nome || "C").trim().charAt(0).toUpperCase();
+  const urgencyTone = getUrgencyTone(order);
 
   if (edit) {
     return <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 18, padding: 20, marginBottom: 10, boxShadow: "0 18px 40px rgba(31,41,55,0.08)" }}><Form init={order} isEdit isMobile={isMobile} onSave={(updated) => { onUpdate(updated); setEdit(false); }} onCancel={() => setEdit(false)} /></div>;
@@ -839,8 +840,8 @@ function Card({ order, onUpdate, onDelete, onDuplicate, onToast, isMobile = fals
           <div style={{ fontSize: 12, color: THEME.tl, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cleanText(order.tipo)}{cleanText(order.tipo) === "Braja" ? ` ${order.fios}f` : ""} · {cleanText(order.mat)}{order.matd ? ` ${cleanText(order.matd)}` : ""} · {cleanText(order.tam)}{parsedContact.contato ? ` · ${parsedContact.contato}` : parsedContact.instagram ? ` · @${parsedContact.instagram}` : ""}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          {overdue && <span style={{ fontSize: 10, background: "#F97316", color: "#FFFFFF", padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif" }}>ATRASADO</span>}
-          {!overdue && dueSoon && <span style={{ fontSize: 10, background: "#FBBF24", color: "#FFFFFF", padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif" }}>PRAZO</span>}
+          {overdue && <span style={{ fontSize: 10, background: urgencyTone.badgeBg, color: urgencyTone.badgeColor, border: `1px solid ${urgencyTone.border}`, padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif" }}>ATRASADO</span>}
+          {!overdue && dueSoon && <span style={{ fontSize: 10, background: urgencyTone.badgeBg, color: urgencyTone.badgeColor, border: `1px solid ${urgencyTone.border}`, padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif" }}>PRAZO</span>}
           {order.urg && <span style={{ fontSize: 10, background: "#FFF7E2", color: THEME.gold, padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif", border: `1px solid #EED9B0` }}>âš¡</span>}
           <select value={order.status} onChange={async (event) => { event.stopPropagation(); await updateStatus(event.target.value); }} onClick={(event) => event.stopPropagation()} style={{ border: "none", background: statusColors.bg, color: statusColors.cl, padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer", outline: "none", fontFamily: "Poppins, sans-serif" }}>
             {STATUS_LIST.map((status) => <option key={status} value={status}>{cleanText(status)}</option>)}
