@@ -76,8 +76,37 @@ Conversa:
       }),
     });
 
-    const payload = await response.json();
+    const rawText = await response.text();
+    let payload = null;
+
+    try {
+      payload = rawText ? JSON.parse(rawText) : null;
+    } catch {
+      payload = null;
+    }
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: "Anthropic retornou erro.",
+        details: payload?.error?.message || rawText || `HTTP ${response.status}`,
+      });
+    }
+
+    if (!payload) {
+      return res.status(502).json({
+        error: "Anthropic retornou resposta vazia ou inválida.",
+        details: rawText || "Sem conteúdo na resposta.",
+      });
+    }
+
     const text = payload?.content?.map((item) => item.text || "").join("") || "";
+    if (!text.trim()) {
+      return res.status(502).json({
+        error: "Anthropic não retornou texto utilizável.",
+        details: JSON.stringify(payload),
+      });
+    }
+
     const order = JSON.parse(text.replace(/```json|```/g, "").trim());
 
     return res.status(200).json({ order: { ...DEFAULT_ORDER, ...order, canal: order.canal || channel || "WhatsApp" } });
