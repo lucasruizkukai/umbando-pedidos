@@ -1052,8 +1052,8 @@ export default function App() {
                   </button>
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{["Todos", ...STATUS_LIST].map((status) => { const colors = status !== "Todos" ? STATUS_COLORS[status] : null; return <button key={status} type="button" onClick={() => setFilter(status)} style={{ background: filter === status ? THEME.primary : colors?.bg || "#FFFFFF", color: filter === status ? "#FFFFFF" : colors?.cl || THEME.tm, border: `1px solid ${filter === status ? THEME.primary : THEME.br}`, borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>{status} ({status === "Todos" ? orders.length : counts[status] || 0})</button>; })}</div>
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
-                  <div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+                  <div style={{ display: "none" }}>
                     <div style={{ ...labelStyle, marginBottom: 6 }}>Canal</div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{["Todos", ...configuredChannels].map((channel) => <button key={channel} type="button" onClick={() => setChannelFilter(channel)} style={{ background: channelFilter === channel ? THEME.primary : "#FFFFFF", color: channelFilter === channel ? "#FFFFFF" : THEME.tm, border: `1px solid ${channelFilter === channel ? THEME.primary : THEME.br}`, borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>{channel}</button>)}</div>
                   </div>
