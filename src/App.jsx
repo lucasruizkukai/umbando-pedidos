@@ -244,6 +244,14 @@ function formatCurrencyInput(value) {
   return cents.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function parseOptionsInput(value, fallback) {
+  const items = String(value || "")
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return items.length ? items : fallback;
+}
+
 function getStatusHistoryEntry(status) {
   return { id: generateId(), status, at: new Date().toISOString() };
 }
@@ -329,7 +337,7 @@ function Section({ title, children }) {
   return <div style={{ marginBottom: 22 }}><div style={{ fontSize: 12, fontWeight: 800, color: THEME.primary, letterSpacing: 0.9, marginBottom: 12, paddingBottom: 8, borderBottom: `1px solid ${THEME.br}`, fontFamily: "Poppins, sans-serif" }}>{title}</div>{children}</div>;
 }
 
-function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [] }) {
+function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channels = CHANNELS, shippers = SHIPPERS, sizes = SIZES }) {
   const parsedInit = splitOrderNotes(init?.obs);
   const parsedContact = splitContact(init?.contato);
   const [form, setForm] = useState({ ...EMPTY, ...(init || {}), contato: parsedContact.contato, instagram: parsedContact.instagram, obs: parsedInit.visibleObs, obsInterna: parsedInit.internalObs || "" });
@@ -425,7 +433,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [] }) {
       {mode === "ia" && AI_ENABLED && (
         <div style={{ marginBottom: 20 }}>
           <div style={{ marginBottom: 10 }}>
-            <Segmented opts={CHANNELS} val={form.canal} onChange={(value) => setField("canal", value)} small />
+            <Segmented opts={channels} val={form.canal} onChange={(value) => setField("canal", value)} small />
           </div>
           <textarea value={conversation} onChange={(event) => setConversation(event.target.value)} placeholder={`Cole a conversa do ${form.canal}...\n\nEx: Quero brajá 7 fios miçanga jablonex, vermelho e preto, 7 firmas meteoro rajada, pingente tridente prateado, 70cm, pix R$180`} style={{ ...inputStyle, height: 160, resize: "vertical", lineHeight: 1.7 }} />
           <div style={{ fontSize: 12, color: THEME.tl, marginTop: 8 }}>Essa função usa uma API no Vercel. Se não houver chave configurada, o restante do sistema continua funcionando no modo manual.</div>
@@ -450,7 +458,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [] }) {
         <datalist id="clientes-sugestoes">
           {customerSuggestions.map((item, index) => <option key={`${item.nome}-${index}`} value={item.nome} />)}
         </datalist>
-        <Field label="Canal"><Segmented opts={CHANNELS} val={form.canal} onChange={(value) => setField("canal", value)} /></Field>
+        <Field label="Canal"><Segmented opts={channels} val={form.canal} onChange={(value) => setField("canal", value)} /></Field>
       </Section>
 
       <Section title="📿 Construção da Peça">
@@ -483,7 +491,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [] }) {
           <Field label="Fio"><Segmented opts={["Nylon", "Cordonê"]} val={form.fio} onChange={(value) => setField("fio", value)} /></Field>
           <Field label="Tamanho">
             <select value={form.tam} onChange={(event) => setField("tam", event.target.value)} style={inputStyle}>
-              {SIZES.map((size) => <option key={size} value={size}>{size}</option>)}
+              {sizes.map((size) => <option key={size} value={size}>{size}</option>)}
             </select>
           </Field>
         </div>
@@ -543,7 +551,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [] }) {
           <Field label="Transportadora">
             <select value={form.transp} onChange={(event) => setField("transp", event.target.value)} style={inputStyle}>
               <option value="">Selecionar...</option>
-              {SHIPPERS.map((shipper) => <option key={shipper} value={shipper}>{shipper}</option>)}
+              {shippers.map((shipper) => <option key={shipper} value={shipper}>{shipper}</option>)}
             </select>
           </Field>
           <Field label="Frete (R$)"><input value={form.frete} onChange={(event) => setField("frete", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 25,00" /></Field>
@@ -650,7 +658,7 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [] }) {
                 </Field>
                 <Field label="Tamanho">
                   <select value={item.tam} onChange={(event) => setExtraItems((prev) => prev.map((extra) => (extra.id === item.id ? { ...extra, tam: event.target.value } : extra)))} style={inputStyle}>
-                    {SIZES.map((size) => <option key={size} value={size}>{size}</option>)}
+                    {sizes.map((size) => <option key={size} value={size}>{size}</option>)}
                   </select>
                 </Field>
               </div>
@@ -891,8 +899,18 @@ export default function App() {
   const [filter, setFilter] = useState(() => window.localStorage.getItem("umbando_filter") || "Todos");
   const [search, setSearch] = useState(() => window.localStorage.getItem("umbando_search") || "");
   const [deadlineFilter, setDeadlineFilter] = useState(() => window.localStorage.getItem("umbando_deadline_filter") || "Todos");
+  const [channelFilter, setChannelFilter] = useState(() => window.localStorage.getItem("umbando_channel_filter") || "Todos");
+  const [sortBy, setSortBy] = useState(() => window.localStorage.getItem("umbando_sort") || "recentes");
   const [toast, setToast] = useState("");
   const [draftOrder, setDraftOrder] = useState(null);
+  const [brandName, setBrandName] = useState(() => window.localStorage.getItem("umbando_brand_name") || "Umbando · Pedidos");
+  const [brandSubtitle, setBrandSubtitle] = useState(() => window.localStorage.getItem("umbando_brand_subtitle") || "Gerenciador de encomendas personalizadas");
+  const [customChannelsText, setCustomChannelsText] = useState(() => window.localStorage.getItem("umbando_channels_text") || CHANNELS.join("\n"));
+  const [customShippersText, setCustomShippersText] = useState(() => window.localStorage.getItem("umbando_shippers_text") || SHIPPERS.join("\n"));
+  const [customSizesText, setCustomSizesText] = useState(() => window.localStorage.getItem("umbando_sizes_text") || SIZES.join("\n"));
+  const configuredChannels = parseOptionsInput(customChannelsText, CHANNELS);
+  const configuredShippers = parseOptionsInput(customShippersText, SHIPPERS);
+  const configuredSizes = parseOptionsInput(customSizesText, SIZES);
   useEffect(() => {
     supabase.from("pedidos").select("*").order("criado_em", { ascending: false }).then(({ data, error }) => {
       if (!error && data) setOrders(data);
@@ -903,6 +921,13 @@ export default function App() {
   useEffect(() => { window.localStorage.setItem("umbando_filter", filter); }, [filter]);
   useEffect(() => { window.localStorage.setItem("umbando_search", search); }, [search]);
   useEffect(() => { window.localStorage.setItem("umbando_deadline_filter", deadlineFilter); }, [deadlineFilter]);
+  useEffect(() => { window.localStorage.setItem("umbando_channel_filter", channelFilter); }, [channelFilter]);
+  useEffect(() => { window.localStorage.setItem("umbando_sort", sortBy); }, [sortBy]);
+  useEffect(() => { window.localStorage.setItem("umbando_brand_name", brandName); }, [brandName]);
+  useEffect(() => { window.localStorage.setItem("umbando_brand_subtitle", brandSubtitle); }, [brandSubtitle]);
+  useEffect(() => { window.localStorage.setItem("umbando_channels_text", customChannelsText); }, [customChannelsText]);
+  useEffect(() => { window.localStorage.setItem("umbando_shippers_text", customShippersText); }, [customShippersText]);
+  useEffect(() => { window.localStorage.setItem("umbando_sizes_text", customSizesText); }, [customSizesText]);
   const showToast = (message) => {
     setToast(message);
     window.clearTimeout(window.__umbandoToastTimer);
@@ -964,7 +989,13 @@ export default function App() {
       deadlineMatches = !!due && new Date(due).toDateString() === new Date().toDateString();
     }
     if (deadlineFilter === "Próximos 2 dias") deadlineMatches = isDueSoon(order);
-    return statusMatches && searchMatches && deadlineMatches;
+    const channelMatches = channelFilter === "Todos" || order.canal === channelFilter;
+    return statusMatches && searchMatches && deadlineMatches && channelMatches;
+  }).sort((a, b) => {
+    if (sortBy === "prazo") return getDueTimestamp(a) - getDueTimestamp(b);
+    if (sortBy === "valor") return getTotal(b) - getTotal(a);
+    if (sortBy === "cliente") return String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR");
+    return new Date(b.criado_em || 0).getTime() - new Date(a.criado_em || 0).getTime();
   });
   const inProgress = orders.filter((order) => ["Novo", "Em Produção"].includes(order.status)).length;
   const revenueMonth = orders.filter((order) => {
@@ -973,12 +1004,13 @@ export default function App() {
     return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).reduce((sum, order) => sum + getTotal(order), 0);
   const overdueCount = orders.filter(isOverdue).length;
-  const channelCounts = CHANNELS.map((channel) => [channel, orders.filter((order) => order.canal === channel).length]);
+  const channelCounts = configuredChannels.map((channel) => [channel, orders.filter((order) => order.canal === channel).length]);
   const customerSuggestions = Array.from(new Map(orders.map((order) => [order.nome, { nome: order.nome }])).values()).filter((item) => item.nome);
   const sortedKanbanOrders = (status) =>
     orders
       .filter((order) => order.status === status)
       .sort((a, b) => getDueTimestamp(a) - getDueTimestamp(b) || new Date(a.criado_em).getTime() - new Date(b.criado_em).getTime());
+  const agendaOrders = orders.filter((order) => order.pent || order.pconf).sort((a, b) => getDueTimestamp(a) - getDueTimestamp(b));
 
   return (
     <div style={{ minHeight: "100vh", background: `linear-gradient(180deg, #FBFAF7 0%, ${THEME.bg} 100%)`, fontFamily: "Poppins, sans-serif", color: THEME.tm }}>
