@@ -117,6 +117,23 @@ function isOverdue(order) {
   return dueDate.getTime() < today.getTime();
 }
 
+function getUrgencyTone(order) {
+  const due = order.pent || order.pconf;
+  if (!due || ["ConcluÃ­do", "Cancelado"].includes(order.status)) {
+    return { border: THEME.br, badgeBg: "#F3F4F6", badgeColor: THEME.tm, surface: THEME.panel };
+  }
+  const dueDate = new Date(due);
+  const today = new Date();
+  dueDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.round((dueDate.getTime() - today.getTime()) / 86400000);
+  if (diff < 0) return { border: "#DC2626", badgeBg: "#FEE2E2", badgeColor: "#991B1B", surface: "#FFF5F5" };
+  if (diff === 0) return { border: "#EA580C", badgeBg: "#FFEDD5", badgeColor: "#C2410C", surface: "#FFF7ED" };
+  if (diff === 1) return { border: "#F59E0B", badgeBg: "#FEF3C7", badgeColor: "#B45309", surface: "#FFFBEA" };
+  if (diff === 2) return { border: "#D4A017", badgeBg: "#FEF3C7", badgeColor: "#9A6B00", surface: "#FFFCF0" };
+  return { border: "#7C9A76", badgeBg: "#E8EFE6", badgeColor: "#496044", surface: THEME.panel };
+}
+
 function createExtraItem() {
   return { id: generateId(), tipo: "Guia", mat: "Miçanga", matd: "", cores: "", tam: "60cm", detalhes: "" };
 }
@@ -1076,7 +1093,7 @@ export default function App() {
                 </div>
                 <div style={{ ...labelStyle, marginBottom: 0 }}>{agendaOrders.length} com data</div>
               </div>
-              {agendaOrders.length === 0 ? <div style={{ textAlign: "center", padding: "40px 20px", background: THEME.panel, borderRadius: 18, border: `1px dashed ${THEME.br}`, color: THEME.tl }}>Nenhum pedido com prazo definido ainda.</div> : <div style={{ display: "grid", gap: 10 }}>{agendaOrders.map((order) => <div key={order.id} style={{ background: isOverdue(order) ? "#FFF4E8" : THEME.panel, border: `1px solid ${isOverdue(order) ? "#FDBA74" : THEME.br}`, borderRadius: 16, padding: "14px 16px", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr .8fr .8fr auto", gap: 10, alignItems: "center" }}><div><div style={{ fontSize: 15, fontWeight: 700, color: THEME.tm }}>{order.nome}</div><div style={{ fontSize: 12, color: THEME.tl }}>{order.tipo} · {order.mat} · {order.tam}</div></div><div><div style={{ ...labelStyle, marginBottom: 4 }}>Confecção</div><div style={{ fontSize: 13, color: THEME.tm }}>{formatDate(order.pconf)}</div></div><div><div style={{ ...labelStyle, marginBottom: 4 }}>Entrega</div><div style={{ fontSize: 13, color: THEME.tm }}>{formatDate(order.pent)}</div></div><div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: isMobile ? "flex-start" : "flex-end" }}><div style={{ background: isOverdue(order) ? "#F97316" : THEME.primarySoft, color: isOverdue(order) ? "#FFFFFF" : THEME.primary, borderRadius: 999, padding: "5px 10px", fontSize: 12, fontWeight: 700 }}>{getDueLabel(order) || "Sem alerta"}</div><button type="button" onClick={() => { setSearch(order.nome); setFilter("Todos"); setTab("lista"); }} style={{ border: `1px solid ${THEME.br}`, background: "#FFFFFF", color: THEME.tm, borderRadius: 10, padding: "6px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Abrir pedido</button></div></div>)}</div>}
+              {agendaOrders.length === 0 ? <div style={{ textAlign: "center", padding: "40px 20px", background: THEME.panel, borderRadius: 18, border: `1px dashed ${THEME.br}`, color: THEME.tl }}>Nenhum pedido com prazo definido ainda.</div> : <div style={{ display: "grid", gap: 10 }}>{agendaOrders.map((order) => { const tone = getUrgencyTone(order); return <div key={order.id} style={{ background: tone.surface, border: `1px solid ${tone.border}`, borderLeft: `8px solid ${tone.border}`, borderRadius: 16, padding: "14px 16px", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr .8fr .8fr auto", gap: 10, alignItems: "center", boxShadow: "0 10px 24px rgba(31,41,55,0.05)" }}><div><div style={{ fontSize: 15, fontWeight: 700, color: THEME.tm }}>{order.nome}</div><div style={{ fontSize: 12, color: THEME.tl }}>{order.tipo} · {order.mat} · {order.tam}</div></div><div><div style={{ ...labelStyle, marginBottom: 4 }}>Confecção</div><div style={{ fontSize: 13, color: THEME.tm }}>{formatDate(order.pconf)}</div></div><div><div style={{ ...labelStyle, marginBottom: 4 }}>Entrega</div><div style={{ fontSize: 13, color: THEME.tm }}>{formatDate(order.pent)}</div></div><div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: isMobile ? "flex-start" : "flex-end" }}><div style={{ background: tone.badgeBg, color: tone.badgeColor, borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 800, border: `1px solid ${tone.border}` }}>{getDueLabel(order) || "Sem alerta"}</div><button type="button" onClick={() => { setSearch(order.nome); setFilter("Todos"); setTab("lista"); }} style={{ border: `1px solid ${THEME.br}`, background: "#FFFFFF", color: THEME.tm, borderRadius: 10, padding: "6px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Abrir pedido</button></div></div>; })}</div>}
             </div>
           )}
           {tab === "config" && (
