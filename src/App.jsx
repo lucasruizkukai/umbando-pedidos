@@ -221,11 +221,11 @@ function buildTransport(transportadora, servico) {
 function buildClientSummary(order, extraItems = [], visibleObs = "") {
   const contact = splitContact(order.contato);
   const lines = [
-    "âœ¨ *Fechamento do seu pedido*",
+    "*Fechamento do seu pedido*",
     "",
     `Oi, ${order.nome}! Separei abaixo o resumo final do seu pedido:`,
     "",
-    "ðŸ“¿ *PeÃ§a principal*",
+    "*Peca principal*",
     `${order.tipo}${order.tipo === "BrajÃ¡" ? ` ${order.fios} fios` : ""}`,
     `Material: ${order.mat}${order.matd ? ` (${order.matd})` : ""}`,
     `Cores: ${order.cores || "NÃ£o informado"}`,
@@ -235,9 +235,9 @@ function buildClientSummary(order, extraItems = [], visibleObs = "") {
     `Envio da peÃ§a: ${order.env}`,
     ...(order.tipo === "BrajÃ¡" ? [`FinalizaÃ§Ã£o: ${order.fin}`, `Firmas: ${order.fqtd ? `${order.fqtd}x ${order.ffmt || ""} ${order.fcor || ""}`.trim() : "NÃ£o informado"}`] : []),
     ...(order.ping ? [`Pingentes: ${order.pqual || "NÃ£o informado"}${order.pmetal ? ` (${order.pmetal})` : ""}`] : []),
-    ...(extraItems.length ? ["", "ðŸ§© *PeÃ§as adicionais*", ...extraItems.map((item, index) => `${index + 2}. ${item.tipo} â€¢ ${item.mat}${item.matd ? ` ${item.matd}` : ""} â€¢ ${item.tam}${item.cores ? ` â€¢ ${item.cores}` : ""}${item.detalhes ? ` â€¢ ${item.detalhes}` : ""}`)] : []),
+    ...(extraItems.length ? ["", "*Pecas adicionais*", ...extraItems.map((item, index) => `${index + 2}. ${item.tipo} · ${item.mat}${item.matd ? ` ${item.matd}` : ""} · ${item.tam}${item.cores ? ` · ${item.cores}` : ""}${item.detalhes ? ` · ${item.detalhes}` : ""}`)] : []),
     "",
-    "ðŸ’° *Pagamento e entrega*",
+    "*Pagamento e entrega*",
     `Produto: ${formatCurrency(parseCurrency(order.valor))}`,
     `Frete: ${formatCurrency(parseCurrency(order.frete))}`,
     ...(order.urg ? [`Taxa de urgÃªncia: ${formatCurrency(parseCurrency(order.taxa))}`] : []),
@@ -246,10 +246,10 @@ function buildClientSummary(order, extraItems = [], visibleObs = "") {
     `Pagamento: ${order.pgto}${order.parc ? ` ${order.parc}` : ""}`,
     ...(order.transp ? [`Transportadora: ${order.transp}`] : []),
     ...(order.pconf ? [`Previsao de postagem: ${formatDate(order.pconf)}`] : []),
-    ...(order.pent ? [`PrevisÃ£o de entrega: ${formatDate(order.pent)}`] : []),
-    ...(visibleObs ? ["", `ðŸ“ ObservaÃ§Ãµes: ${visibleObs}`] : []),
+    ...(order.pent ? [`Previsao de entrega: ${formatDate(order.pent)}`] : []),
+    ...(visibleObs ? ["", `Observacoes: ${visibleObs}`] : []),
     "",
-    "Se estiver tudo certinho, seguimos com a produÃ§Ã£o ðŸ¤",
+    "Se estiver tudo certinho, seguimos com a producao.",
   ];
   if (contact.instagram && order.canal === "Instagram DM") {
     lines.splice(3, 0, `Instagram: @${contact.instagram}`);
@@ -352,7 +352,7 @@ function buildTrackingMessage(order) {
     `Transportadora: ${order.transp || "NÃ£o informada"}`,
     `CÃ³digo de rastreio: ${order.rastreio || "NÃ£o informado"}`,
     ...(trackingLink ? ["", `Acompanhe aqui: ${trackingLink}`] : []),
-    ...(order.pent ? ["", `PrevisÃ£o de entrega: ${formatDate(order.pent)}`] : []),
+    ...(order.pent ? ["", `Previsao de entrega: ${formatDate(order.pent)}`] : []),
     "",
     "Qualquer dÃºvida, fico Ã  disposiÃ§Ã£o.",
     ...(contact.instagram ? [`Instagram: @${contact.instagram}`] : []),
@@ -870,11 +870,11 @@ function Card({ order, onUpdate, onDelete, onDuplicate, onToast, isMobile = fals
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
           {overdue && <span style={{ fontSize: 10, background: urgencyTone.badgeBg, color: urgencyTone.badgeColor, border: `1px solid ${urgencyTone.border}`, padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif" }}>ATRASADO</span>}
           {!overdue && dueSoon && <span style={{ fontSize: 10, background: urgencyTone.badgeBg, color: urgencyTone.badgeColor, border: `1px solid ${urgencyTone.border}`, padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif" }}>PRAZO</span>}
-          {order.urg && <span style={{ fontSize: 10, background: "#FFF7E2", color: THEME.gold, padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif", border: `1px solid #EED9B0` }}>âš¡</span>}
+          {order.urg && <span style={{ fontSize: 10, background: "#FFF7E2", color: THEME.gold, padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif", border: `1px solid #EED9B0` }}>Urgente</span>}
           <select value={order.status} onChange={async (event) => { event.stopPropagation(); await updateStatus(event.target.value); }} onClick={(event) => event.stopPropagation()} style={{ border: "none", background: statusColors.bg, color: statusColors.cl, padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer", outline: "none", fontFamily: "Poppins, sans-serif" }}>
             {STATUS_LIST.map((status) => <option key={status} value={status}>{cleanText(status)}</option>)}
           </select>
-          <span style={{ color: THEME.tl, fontSize: 11 }}>{open ? "â–²" : "â–¼"}</span>
+          <span style={{ color: THEME.tl, fontSize: 11 }}>{open ? "▲" : "▼"}</span>
         </div>
       </div>
       {open && (
@@ -905,7 +905,7 @@ function Card({ order, onUpdate, onDelete, onDuplicate, onToast, isMobile = fals
           )}
           {extraItems.length > 0 && (
             <div style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
-              <div style={{ ...labelStyle, marginBottom: 8, color: THEME.gold }}>PeÃ§as adicionais</div>
+              <div style={{ ...labelStyle, marginBottom: 8, color: THEME.gold }}>Pecas adicionais</div>
               <div style={{ display: "grid", gap: 8 }}>
                 {extraItems.map((item, index) => (
                   <div key={item.id || index} style={{ background: THEME.soft, border: `1px solid ${THEME.br}`, borderRadius: 10, padding: "10px 12px" }}>
@@ -949,10 +949,10 @@ function Card({ order, onUpdate, onDelete, onDuplicate, onToast, isMobile = fals
           <div style={{ display: "flex", gap: 8, justifyContent: isMobile ? "flex-start" : "flex-end", flexWrap: "wrap" }}>
             {order.status !== "Postado" && <button type="button" onClick={() => updateStatus("Postado")} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.primary}`, background: THEME.primarySoft, color: THEME.primary, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Marcar postado</button>}
             {order.status !== "ConcluÃ­do" && <button type="button" onClick={() => updateStatus("ConcluÃ­do")} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.gold}`, background: "#FFF9F0", color: THEME.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Concluir</button>}
-            <button type="button" onClick={copy} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.br}`, background: "transparent", color: THEME.tm, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>ðŸ“‹ Copiar</button>
-            <button type="button" onClick={() => onDuplicate(order)} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.primary}`, background: "transparent", color: THEME.primary, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>â§‰ Duplicar</button>
-            <button type="button" onClick={() => setEdit(true)} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.gold}`, background: "transparent", color: THEME.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>âœï¸ Editar</button>
-            <button type="button" onClick={handleDelete} style={{ padding: "7px 14px", borderRadius: 10, border: "1px solid #7F1D1D", background: "transparent", color: "#F87171", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>ðŸ—‘ Excluir</button>
+            <button type="button" onClick={copy} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.br}`, background: "transparent", color: THEME.tm, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Copiar</button>
+            <button type="button" onClick={() => onDuplicate(order)} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.primary}`, background: "transparent", color: THEME.primary, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Duplicar</button>
+            <button type="button" onClick={() => setEdit(true)} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.gold}`, background: "transparent", color: THEME.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Editar</button>
+            <button type="button" onClick={handleDelete} style={{ padding: "7px 14px", borderRadius: 10, border: "1px solid #7F1D1D", background: "transparent", color: "#F87171", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Excluir</button>
           </div>
         </div>
       )}
