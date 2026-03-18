@@ -27,7 +27,19 @@ const FIRM_FORMATS = ["Lisa", "Mordida", "Pitanga", "Meteoro", "Sextavada", "Bol
 const SIZES = ["40cm", "50cm", "60cm", "65cm", "70cm", "75cm", "80cm"];
 const SHIPPERS = ["Correios", "Loggi", "JadLog", "Motoboy"];
 const CHANNELS = ["WhatsApp", "Instagram DM", "Comentário"];
-const THEME = { br: "#E5D5B0", gold: "#C8853A", glL: "#E8B96A", dark: "#2C1A0E", tm: "#6B5C40", tl: "#9C8C70", card: "#FFFDF8", bg: "#FAF6EE" };
+const THEME = {
+  br: "#2A2A2A",
+  gold: "#FFD233",
+  glL: "#FFE072",
+  dark: "#050505",
+  tm: "#F5F5F5",
+  tl: "#A1A1AA",
+  card: "#101010",
+  bg: "#050505",
+  panel: "#161616",
+  soft: "#1E1E1E",
+};
+const AI_ENABLED = false;
 
 const EMPTY = {
   nome: "", contato: "", canal: "WhatsApp", tipo: "Guia", fios: "3", mat: "Miçanga", matd: "", cores: "", fin: "Fio solto",
@@ -36,8 +48,8 @@ const EMPTY = {
   taxa: "", pconf: "", pent: "", rastreio: "", status: "Novo", obs: "", imgs: [],
 };
 
-const inputStyle = { width: "100%", boxSizing: "border-box", border: "1px solid #E5D5B0", borderRadius: 8, padding: "9px 12px", fontSize: 14, fontFamily: "Georgia, serif", background: "#FFFBF5", color: "#2C1A0E", outline: "none" };
-const labelStyle = { display: "block", fontSize: 11, fontWeight: 700, color: "#9C8C70", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 5 };
+const inputStyle = { width: "100%", boxSizing: "border-box", border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 12px", fontSize: 14, fontFamily: "Poppins, sans-serif", background: "#111111", color: "#F5F5F5", outline: "none" };
+const labelStyle = { display: "block", fontSize: 11, fontWeight: 700, color: "#A1A1AA", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 5, fontFamily: "Poppins, sans-serif" };
 
 function generateId() { return `o_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`; }
 function formatDate(date) {
@@ -75,7 +87,7 @@ function Field({ label, children, full }) {
 }
 
 function Section({ title, children }) {
-  return <div style={{ marginBottom: 20 }}><div style={{ fontSize: 12, fontWeight: 700, color: THEME.gold, letterSpacing: 0.6, marginBottom: 11, paddingBottom: 7, borderBottom: `1px solid ${THEME.br}` }}>{title}</div>{children}</div>;
+  return <div style={{ marginBottom: 20 }}><div style={{ fontSize: 12, fontWeight: 800, color: THEME.gold, letterSpacing: 0.9, marginBottom: 11, paddingBottom: 7, borderBottom: `1px solid ${THEME.br}`, fontFamily: "Poppins, sans-serif" }}>{title}</div>{children}</div>;
 }
 
 function Form({ init, onSave, onCancel, isEdit }) {
@@ -138,14 +150,14 @@ function Form({ init, onSave, onCancel, isEdit }) {
   return (
     <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        {[["manual", "✏️ Manual"], ["ia", "✨ Extrair com IA"]].map(([key, label]) => (
-          <button key={key} type="button" onClick={() => setMode(key)} style={{ flex: 1, padding: "11px", borderRadius: 10, fontSize: 13, fontWeight: 700, border: `2px solid ${mode === key ? THEME.gold : THEME.br}`, background: mode === key ? THEME.dark : "transparent", color: mode === key ? "#F5DFA0" : THEME.tm, cursor: "pointer", fontFamily: "Georgia, serif" }}>
+        {[["manual", "✏️ Manual"], ["ia", AI_ENABLED ? "✨ Extrair com IA" : "🔒 IA em breve"]].map(([key, label]) => (
+          <button key={key} type="button" disabled={key === "ia" && !AI_ENABLED} onClick={() => setMode(key)} style={{ flex: 1, padding: "11px", borderRadius: 12, fontSize: 13, fontWeight: 700, border: `1px solid ${mode === key ? THEME.gold : THEME.br}`, background: mode === key ? THEME.gold : "transparent", color: mode === key ? "#050505" : THEME.tm, cursor: key === "ia" && !AI_ENABLED ? "not-allowed" : "pointer", opacity: key === "ia" && !AI_ENABLED ? 0.6 : 1, fontFamily: "Poppins, sans-serif" }}>
             {label}
           </button>
         ))}
       </div>
 
-      {mode === "ia" && (
+      {mode === "ia" && AI_ENABLED && (
         <div style={{ marginBottom: 20 }}>
           <div style={{ marginBottom: 10 }}>
             <Segmented opts={CHANNELS} val={form.canal} onChange={(value) => setField("canal", value)} small />
@@ -155,6 +167,12 @@ function Form({ init, onSave, onCancel, isEdit }) {
           <button type="button" onClick={extractWithAI} disabled={aiLoading || !conversation.trim()} style={{ width: "100%", marginTop: 10, padding: "13px", borderRadius: 10, border: "none", background: aiLoading || !conversation.trim() ? "#D5C5A0" : "linear-gradient(135deg,#C8853A,#E8B96A)", color: "#fff", fontSize: 14, fontWeight: 700, cursor: aiLoading || !conversation.trim() ? "not-allowed" : "pointer", fontFamily: "Georgia, serif" }}>
             {aiLoading ? "⏳ Analisando..." : "✨ Extrair Pedido"}
           </button>
+        </div>
+      )}
+
+      {!AI_ENABLED && (
+        <div style={{ marginBottom: 20, background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 12, padding: "12px 14px", color: THEME.tl, fontSize: 13, lineHeight: 1.5, fontFamily: "Poppins, sans-serif" }}>
+          A extração com IA está temporariamente desativada. O cadastro manual continua funcionando normalmente.
         </div>
       )}
 
@@ -178,7 +196,7 @@ function Form({ init, onSave, onCancel, isEdit }) {
         <Field label="Cores" full><input value={form.cores} onChange={(event) => setField("cores", event.target.value)} style={inputStyle} placeholder="Ex: vermelho, preto e branco alternados" /></Field>
         {form.tipo === "Brajá" && <Field label="Finalização"><Segmented opts={["Fio solto", "Fio trançado"]} val={form.fin} onChange={(value) => setField("fin", value)} /></Field>}
         {form.tipo === "Brajá" && (
-          <div style={{ background: "#FEF9EF", border: `1px solid ${THEME.br}`, borderRadius: 10, padding: "13px 15px", marginBottom: 13 }}>
+          <div style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 12, padding: "13px 15px", marginBottom: 13 }}>
             <div style={{ ...labelStyle, marginBottom: 11 }}>🧿 Firmas</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
               <Field label="Quantidade"><input value={form.fqtd} onChange={(event) => setField("fqtd", event.target.value)} style={inputStyle} placeholder="Ex: 7" /></Field>
@@ -204,7 +222,7 @@ function Form({ init, onSave, onCancel, isEdit }) {
           <Field label="Fechamento"><Segmented opts={["Com firma", "Sem firma"]} val={form.fech} onChange={(value) => setField("fech", value)} /></Field>
           <Field label="Enviar"><Segmented opts={["Fechado", "Aberto"]} val={form.env} onChange={(value) => setField("env", value)} /></Field>
         </div>
-        <div style={{ background: "#FEF9EF", border: `1px solid ${THEME.br}`, borderRadius: 10, padding: "13px 15px", marginBottom: 13 }}>
+        <div style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 12, padding: "13px 15px", marginBottom: 13 }}>
           <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: form.ping ? 13 : 0 }}>
             <input type="checkbox" checked={form.ping} onChange={(event) => setField("ping", event.target.checked)} style={{ width: 18, height: 18, accentColor: THEME.gold }} />
             <span style={{ fontSize: 14, fontWeight: 700, color: THEME.dark }}>Tem Pingente?</span>
@@ -258,10 +276,10 @@ function Form({ init, onSave, onCancel, isEdit }) {
       </Section>
 
       <Section title="📷 Imagens de Referência">
-        <div onClick={() => fileRef.current?.click()} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); handleImages(event.dataTransfer.files); }} style={{ border: `2px dashed ${THEME.br}`, borderRadius: 10, padding: "18px 16px", textAlign: "center", cursor: "pointer", background: "#FFFBF5", marginBottom: 10 }}>
+        <div onClick={() => fileRef.current?.click()} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); handleImages(event.dataTransfer.files); }} style={{ border: `2px dashed ${THEME.br}`, borderRadius: 12, padding: "18px 16px", textAlign: "center", cursor: "pointer", background: THEME.panel, marginBottom: 10 }}>
           <div style={{ fontSize: 22, marginBottom: 4 }}>📎</div>
-          <div style={{ fontWeight: 600, color: THEME.tm, fontSize: 14 }}>Clique ou arraste as imagens</div>
-          <div style={{ fontSize: 12, color: THEME.tl, marginTop: 3 }}>Até 4 fotos · JPG, PNG, WEBP</div>
+          <div style={{ fontWeight: 600, color: THEME.tm, fontSize: 14, fontFamily: "Poppins, sans-serif" }}>Clique ou arraste as imagens</div>
+          <div style={{ fontSize: 12, color: THEME.tl, marginTop: 3, fontFamily: "Poppins, sans-serif" }}>Até 4 fotos · JPG, PNG, WEBP</div>
           <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(event) => handleImages(event.target.files)} />
         </div>
         {images.length > 0 && (
@@ -282,8 +300,8 @@ function Form({ init, onSave, onCancel, isEdit }) {
       </Section>
 
       <div style={{ display: "flex", gap: 10, paddingTop: 4 }}>
-        {onCancel && <button type="button" onClick={onCancel} style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1px solid ${THEME.br}`, background: "none", color: THEME.tm, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "Georgia, serif" }}>Cancelar</button>}
-        <button type="button" onClick={save} disabled={saving} style={{ flex: 2, padding: "14px", borderRadius: 10, border: "none", background: saving ? "#D5C5A0" : "linear-gradient(135deg,#C8853A,#E8B96A)", color: "#fff", fontSize: 15, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", fontFamily: "Georgia, serif" }}>
+        {onCancel && <button type="button" onClick={onCancel} style={{ flex: 1, padding: "12px", borderRadius: 12, border: `1px solid ${THEME.br}`, background: "transparent", color: THEME.tm, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>Cancelar</button>}
+        <button type="button" onClick={save} disabled={saving} style={{ flex: 2, padding: "14px", borderRadius: 12, border: "none", background: saving ? "#5A5A5A" : "linear-gradient(135deg,#FFD233,#FFE072)", color: "#050505", fontSize: 15, fontWeight: 800, cursor: saving ? "not-allowed" : "pointer", fontFamily: "Poppins, sans-serif" }}>
           {saving ? "⏳ Salvando..." : isEdit ? "💾 Salvar Alterações" : "✅ Criar Pedido"}
         </button>
       </div>
@@ -299,7 +317,7 @@ function Card({ order, onUpdate, onDelete }) {
   const images = order.imgs || [];
 
   if (edit) {
-    return <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 14, padding: 20, marginBottom: 10 }}><Form init={order} isEdit onSave={(updated) => { onUpdate(updated); setEdit(false); }} onCancel={() => setEdit(false)} /></div>;
+    return <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 16, padding: 20, marginBottom: 10 }}><Form init={order} isEdit onSave={(updated) => { onUpdate(updated); setEdit(false); }} onCancel={() => setEdit(false)} /></div>;
   }
 
   const pairs = [
@@ -339,16 +357,16 @@ function Card({ order, onUpdate, onDelete }) {
   };
 
   return (
-    <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 14, marginBottom: 10, overflow: "hidden" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "#FDF6E9", borderBottom: open ? `1px solid ${THEME.br}` : "none", cursor: "pointer" }} onClick={() => setOpen((value) => !value)}>
-        <div style={{ width: 38, height: 38, borderRadius: "50%", background: `linear-gradient(135deg,${THEME.gold},${THEME.glL})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>🔮</div>
+    <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 16, marginBottom: 10, overflow: "hidden", boxShadow: "0 18px 40px rgba(0,0,0,0.28)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: THEME.panel, borderBottom: open ? `1px solid ${THEME.br}` : "none", cursor: "pointer" }} onClick={() => setOpen((value) => !value)}>
+        <div style={{ width: 38, height: 38, borderRadius: "50%", background: `linear-gradient(135deg,${THEME.gold},${THEME.glL})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, color: "#050505" }}>🔮</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: THEME.dark, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{order.nome || "Cliente"}</div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: THEME.tm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "Poppins, sans-serif" }}>{order.nome || "Cliente"}</div>
           <div style={{ fontSize: 12, color: THEME.tl, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{order.tipo}{order.tipo === "Brajá" ? ` ${order.fios}f` : ""} · {order.mat}{order.matd ? ` ${order.matd}` : ""} · {order.tam}{order.contato ? ` · ${order.contato}` : ""}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          {order.urg && <span style={{ fontSize: 10, background: "#FEF3C7", color: "#92400E", padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>⚡</span>}
-          <select value={order.status} onChange={async (event) => { event.stopPropagation(); const nextStatus = event.target.value; await supabase.from("pedidos").update({ status: nextStatus }).eq("id", order.id); onUpdate({ ...order, status: nextStatus }); }} onClick={(event) => event.stopPropagation()} style={{ border: "none", background: statusColors.bg, color: statusColors.cl, padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer", outline: "none", fontFamily: "Georgia, serif" }}>
+          {order.urg && <span style={{ fontSize: 10, background: "#FFD233", color: "#050505", padding: "2px 8px", borderRadius: 20, fontWeight: 700, fontFamily: "Poppins, sans-serif" }}>⚡</span>}
+          <select value={order.status} onChange={async (event) => { event.stopPropagation(); const nextStatus = event.target.value; await supabase.from("pedidos").update({ status: nextStatus }).eq("id", order.id); onUpdate({ ...order, status: nextStatus }); }} onClick={(event) => event.stopPropagation()} style={{ border: "none", background: statusColors.bg, color: statusColors.cl, padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer", outline: "none", fontFamily: "Poppins, sans-serif" }}>
             {STATUS_LIST.map((status) => <option key={status} value={status}>{STATUS_COLORS[status].em} {status}</option>)}
           </select>
           <span style={{ color: THEME.tl, fontSize: 11 }}>{open ? "▲" : "▼"}</span>
@@ -357,14 +375,14 @@ function Card({ order, onUpdate, onDelete }) {
       {open && (
         <div style={{ padding: 16 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 13 }}>
-            {pairs.map(([key, value]) => <div key={key} style={{ background: "#FAF6EE", borderRadius: 8, padding: "8px 10px" }}><div style={{ fontSize: 10, fontWeight: 700, color: THEME.tl, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 2 }}>{key}</div><div style={{ fontSize: 13, color: THEME.dark, wordBreak: "break-word" }}>{value || "—"}</div></div>)}
+            {pairs.map(([key, value]) => <div key={key} style={{ background: THEME.soft, borderRadius: 10, padding: "8px 10px", border: `1px solid ${THEME.br}` }}><div style={{ fontSize: 10, fontWeight: 700, color: THEME.tl, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 2, fontFamily: "Poppins, sans-serif" }}>{key}</div><div style={{ fontSize: 13, color: THEME.tm, wordBreak: "break-word", fontFamily: "Poppins, sans-serif" }}>{value || "—"}</div></div>)}
           </div>
-          {order.obs && <div style={{ background: "#FEF9EF", border: `1px solid ${THEME.br}`, borderRadius: 8, padding: "10px 12px", marginBottom: 12, fontSize: 13, color: THEME.tm, lineHeight: 1.6 }}><strong>Obs:</strong> {order.obs}</div>}
+          {order.obs && <div style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 13, color: THEME.tm, lineHeight: 1.6, fontFamily: "Poppins, sans-serif" }}><strong>Obs:</strong> {order.obs}</div>}
           {images.length > 0 && <div style={{ marginBottom: 13 }}><div style={{ ...labelStyle, marginBottom: 7 }}>📷 Referências</div><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{images.map((image, index) => <div key={index} onClick={() => setViewer(image)} style={{ width: 70, height: 70, borderRadius: 8, overflow: "hidden", cursor: "zoom-in", border: `1px solid ${THEME.br}`, flexShrink: 0 }}><img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>)}</div></div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button type="button" onClick={copy} style={{ padding: "7px 14px", borderRadius: 8, border: `1px solid ${THEME.br}`, background: "none", color: THEME.tm, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Georgia, serif" }}>📋 Copiar</button>
-            <button type="button" onClick={() => setEdit(true)} style={{ padding: "7px 14px", borderRadius: 8, border: `1px solid ${THEME.gold}`, background: "none", color: THEME.gold, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Georgia, serif" }}>✏️ Editar</button>
-            <button type="button" onClick={handleDelete} style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid #FCA5A5", background: "none", color: "#991B1B", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Georgia, serif" }}>🗑 Excluir</button>
+            <button type="button" onClick={copy} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.br}`, background: "transparent", color: THEME.tm, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>📋 Copiar</button>
+            <button type="button" onClick={() => setEdit(true)} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${THEME.gold}`, background: "transparent", color: THEME.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>✏️ Editar</button>
+            <button type="button" onClick={handleDelete} style={{ padding: "7px 14px", borderRadius: 10, border: "1px solid #7F1D1D", background: "transparent", color: "#F87171", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>🗑 Excluir</button>
           </div>
         </div>
       )}
@@ -396,30 +414,30 @@ export default function App() {
   });
   const inProgress = orders.filter((order) => ["Novo", "Aguardando Pagamento", "Em Produção"].includes(order.status)).length;
   return (
-    <div style={{ minHeight: "100vh", background: THEME.bg, fontFamily: "Georgia, serif", color: THEME.dark }}>
-      <div style={{ background: "linear-gradient(135deg,#2C1A0E,#4A2C12)", boxShadow: "0 4px 24px rgba(44,26,14,0.35)" }}>
+    <div style={{ minHeight: "100vh", background: "radial-gradient(circle at top, #1A1A1A 0%, #050505 55%)", fontFamily: "Poppins, sans-serif", color: THEME.tm }}>
+      <div style={{ background: "linear-gradient(135deg,#050505,#181818)", boxShadow: "0 18px 40px rgba(0,0,0,0.45)", borderBottom: `1px solid ${THEME.br}` }}>
         <div style={{ maxWidth: 800, margin: "0 auto", padding: "18px 20px 0" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
             <div style={{ fontSize: 26 }}>✨</div>
-            <div><div style={{ fontSize: 20, fontWeight: 700, color: "#F5DFA0", letterSpacing: 0.5 }}>Umbando · Pedidos</div><div style={{ fontSize: 12, color: "#C8A96A" }}>Gerenciador de encomendas personalizadas</div></div>
-            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>{[["Andamento", inProgress, "#EAB308"], ["Total", orders.length, "#C8A96A"]].map(([label, value, color]) => <div key={label} style={{ background: "rgba(255,255,255,0.08)", borderRadius: 10, padding: "6px 12px", textAlign: "center" }}><div style={{ fontSize: 18, fontWeight: 700, color }}>{value}</div><div style={{ fontSize: 10, color: "#C8A96A" }}>{label}</div></div>)}</div>
+            <div><div style={{ fontSize: 22, fontWeight: 800, color: "#FFFFFF", letterSpacing: 0.2 }}>Umbando · Pedidos</div><div style={{ fontSize: 12, color: THEME.gold, fontWeight: 500 }}>Gerenciador de encomendas personalizadas</div></div>
+            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>{[["Andamento", inProgress, THEME.gold], ["Total", orders.length, "#FFFFFF"]].map(([label, value, color]) => <div key={label} style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 12, padding: "6px 12px", textAlign: "center", minWidth: 62 }}><div style={{ fontSize: 18, fontWeight: 800, color, fontFamily: "Poppins, sans-serif" }}>{value}</div><div style={{ fontSize: 10, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>{label}</div></div>)}</div>
           </div>
-          <div style={{ display: "flex", gap: 4 }}>{[["novo", "➕ Novo"], ["lista", `📦 Pedidos (${orders.length})`], ["kanban", "📊 Kanban"]].map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} style={{ background: tab === key ? "#FAF6EE" : "transparent", color: tab === key ? "#2C1A0E" : "#C8A96A", border: "none", padding: "10px 16px", fontSize: 13, fontWeight: tab === key ? 700 : 500, cursor: "pointer", borderRadius: "8px 8px 0 0", fontFamily: "Georgia, serif" }}>{label}</button>)}</div>
+          <div style={{ display: "flex", gap: 6 }}>{[["novo", "➕ Novo"], ["lista", `📦 Pedidos (${orders.length})`], ["kanban", "📊 Kanban"]].map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} style={{ background: tab === key ? THEME.gold : "transparent", color: tab === key ? "#050505" : THEME.tl, border: tab === key ? "none" : `1px solid ${THEME.br}`, padding: "10px 16px", fontSize: 13, fontWeight: tab === key ? 700 : 500, cursor: "pointer", borderRadius: "12px 12px 0 0", fontFamily: "Poppins, sans-serif" }}>{label}</button>)}</div>
         </div>
       </div>
       <div style={{ maxWidth: 800, margin: "0 auto", padding: "22px 16px" }}>
-        {!loaded ? <div style={{ textAlign: "center", padding: 80, color: THEME.tl }}>⏳ Carregando pedidos...</div> : <>
-          {tab === "novo" && <div style={{ background: "#FFFDF8", border: `1px solid ${THEME.br}`, borderRadius: 16, padding: "22px 20px" }}><Form onSave={(order) => { saveOrder(order); setTab("lista"); }} /></div>}
+        {!loaded ? <div style={{ textAlign: "center", padding: 80, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>⏳ Carregando pedidos...</div> : <>
+          {tab === "novo" && <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 20, padding: "22px 20px", boxShadow: "0 22px 60px rgba(0,0,0,0.35)" }}><Form onSave={(order) => { saveOrder(order); setTab("lista"); }} /></div>}
           {tab === "lista" && (
             <div>
               <div style={{ marginBottom: 14, display: "flex", flexDirection: "column", gap: 10 }}>
                 <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="🔍 Buscar por nome, contato, cores..." style={{ ...inputStyle, padding: "11px 14px", fontSize: 15 }} />
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{["Todos", ...STATUS_LIST].map((status) => { const colors = status !== "Todos" ? STATUS_COLORS[status] : null; return <button key={status} type="button" onClick={() => setFilter(status)} style={{ background: filter === status ? "#2C1A0E" : colors?.bg || "#FFFDF8", color: filter === status ? "#F5DFA0" : colors?.cl || "#6B5C40", border: `1px solid ${filter === status ? "#2C1A0E" : "#E5D5B0"}`, borderRadius: 20, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Georgia, serif" }}>{status} ({status === "Todos" ? orders.length : counts[status] || 0})</button>; })}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{["Todos", ...STATUS_LIST].map((status) => { const colors = status !== "Todos" ? STATUS_COLORS[status] : null; return <button key={status} type="button" onClick={() => setFilter(status)} style={{ background: filter === status ? THEME.gold : colors?.bg || THEME.panel, color: filter === status ? "#050505" : colors?.cl || THEME.tm, border: `1px solid ${filter === status ? THEME.gold : THEME.br}`, borderRadius: 20, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Poppins, sans-serif" }}>{status} ({status === "Todos" ? orders.length : counts[status] || 0})</button>; })}</div>
               </div>
-              {filteredOrders.length === 0 ? <div style={{ textAlign: "center", padding: "60px 20px", background: "#FFFDF8", borderRadius: 14, border: "1px dashed #E5D5B0", color: THEME.tl }}><div style={{ fontSize: 34, marginBottom: 10 }}>🔮</div><div style={{ fontSize: 16, fontWeight: 600, color: THEME.tm, marginBottom: 6 }}>{orders.length === 0 ? "Nenhum pedido ainda" : "Nenhum resultado"}</div><div style={{ fontSize: 13 }}>{orders.length === 0 ? "Crie o primeiro na aba ➕ Novo" : "Tente outros filtros"}</div></div> : filteredOrders.map((order) => <Card key={order.id} order={order} onUpdate={updateOrder} onDelete={deleteOrder} />)}
+              {filteredOrders.length === 0 ? <div style={{ textAlign: "center", padding: "60px 20px", background: THEME.card, borderRadius: 16, border: `1px dashed ${THEME.br}`, color: THEME.tl }}><div style={{ fontSize: 34, marginBottom: 10 }}>🔮</div><div style={{ fontSize: 16, fontWeight: 700, color: THEME.tm, marginBottom: 6, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Nenhum pedido ainda" : "Nenhum resultado"}</div><div style={{ fontSize: 13, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Crie o primeiro na aba Novo" : "Tente outros filtros"}</div></div> : filteredOrders.map((order) => <Card key={order.id} order={order} onUpdate={updateOrder} onDelete={deleteOrder} />)}
             </div>
           )}
-          {tab === "kanban" && <div style={{ overflowX: "auto", paddingBottom: 8 }}><div style={{ display: "flex", gap: 10, minWidth: "max-content" }}>{STATUS_LIST.map((status) => { const colors = STATUS_COLORS[status]; const list = orders.filter((order) => order.status === status); return <div key={status} style={{ width: 195, flexShrink: 0 }}><div style={{ background: colors.bg, color: colors.cl, padding: "8px 12px", borderRadius: "10px 10px 0 0", fontWeight: 700, fontSize: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}><span>{colors.em} {status}</span><span style={{ background: "rgba(0,0,0,0.1)", borderRadius: 20, padding: "2px 8px" }}>{list.length}</span></div><div style={{ background: "#F0EAD9", borderRadius: "0 0 10px 10px", padding: 8, minHeight: 100 }}>{list.length === 0 ? <div style={{ textAlign: "center", padding: "24px 10px", color: THEME.tl, fontSize: 12 }}>Vazio</div> : list.map((order) => <div key={order.id} onClick={() => { setSearch(order.nome); setFilter("Todos"); setTab("lista"); }} style={{ background: "#FFFDF8", border: `1px solid ${THEME.br}`, borderRadius: 8, padding: "10px 12px", marginBottom: 8, cursor: "pointer" }}><div style={{ fontWeight: 700, fontSize: 13, color: THEME.dark, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{order.nome || "Cliente"}</div><div style={{ fontSize: 11, color: THEME.tl }}>{order.tipo}{order.tipo === "Brajá" ? ` ${order.fios}f` : ""} · {order.mat} · {order.tam}</div>{order.valor && <div style={{ fontSize: 12, fontWeight: 700, color: THEME.gold, marginTop: 4 }}>R$ {order.valor}</div>}{order.urg && <div style={{ fontSize: 10, color: "#92400E", fontWeight: 700, marginTop: 2 }}>⚡ URGENTE</div>}</div>)}</div></div>; })}</div></div>}
+          {tab === "kanban" && <div style={{ overflowX: "auto", paddingBottom: 8 }}><div style={{ display: "flex", gap: 10, minWidth: "max-content" }}>{STATUS_LIST.map((status) => { const colors = STATUS_COLORS[status]; const list = orders.filter((order) => order.status === status); return <div key={status} style={{ width: 195, flexShrink: 0 }}><div style={{ background: colors.bg, color: colors.cl, padding: "8px 12px", borderRadius: "12px 12px 0 0", fontWeight: 700, fontSize: 12, display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "Poppins, sans-serif" }}><span>{colors.em} {status}</span><span style={{ background: "rgba(0,0,0,0.18)", borderRadius: 20, padding: "2px 8px" }}>{list.length}</span></div><div style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderTop: "none", borderRadius: "0 0 12px 12px", padding: 8, minHeight: 100 }}>{list.length === 0 ? <div style={{ textAlign: "center", padding: "24px 10px", color: THEME.tl, fontSize: 12, fontFamily: "Poppins, sans-serif" }}>Vazio</div> : list.map((order) => <div key={order.id} onClick={() => { setSearch(order.nome); setFilter("Todos"); setTab("lista"); }} style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 10, padding: "10px 12px", marginBottom: 8, cursor: "pointer" }}><div style={{ fontWeight: 700, fontSize: 13, color: THEME.tm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "Poppins, sans-serif" }}>{order.nome || "Cliente"}</div><div style={{ fontSize: 11, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>{order.tipo}{order.tipo === "Brajá" ? ` ${order.fios}f` : ""} · {order.mat} · {order.tam}</div>{order.valor && <div style={{ fontSize: 12, fontWeight: 700, color: THEME.gold, marginTop: 4, fontFamily: "Poppins, sans-serif" }}>R$ {order.valor}</div>}{order.urg && <div style={{ fontSize: 10, color: THEME.gold, fontWeight: 700, marginTop: 2, fontFamily: "Poppins, sans-serif" }}>⚡ URGENTE</div>}</div>)}</div></div>; })}</div></div>}
         </>}
       </div>
     </div>
