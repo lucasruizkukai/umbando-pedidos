@@ -202,6 +202,22 @@ function buildContact(contato, instagram) {
   return cleanContato;
 }
 
+function splitTransport(value) {
+  const raw = String(value || "").trim();
+  if (raw.startsWith("Correios")) {
+    if (raw.includes("Sedex")) return { transportadora: "Correios", servico: "Sedex" };
+    if (raw.includes("PAC")) return { transportadora: "Correios", servico: "PAC" };
+    if (raw.toLowerCase().includes("mini pac")) return { transportadora: "Correios", servico: "Mini Pac" };
+    return { transportadora: "Correios", servico: "" };
+  }
+  return { transportadora: raw, servico: "" };
+}
+
+function buildTransport(transportadora, servico) {
+  if (transportadora !== "Correios") return transportadora || "";
+  return servico ? `Correios - ${servico}` : "Correios";
+}
+
 function buildClientSummary(order, extraItems = [], visibleObs = "") {
   const contact = splitContact(order.contato);
   const lines = [
@@ -323,7 +339,7 @@ function applyStatusDefaults(order, nextStatus) {
 function buildTrackingLink(order) {
   const code = (order.rastreio || "").trim();
   if (!code) return "";
-  if (order.transp === "Correios") return `https://rastreamento.correios.com.br/app/index.php?objeto=${encodeURIComponent(code)}`;
+  if ((order.transp || "").startsWith("Correios")) return `https://rastreamento.correios.com.br/app/index.php?objeto=${encodeURIComponent(code)}`;
   return "";
 }
 
@@ -383,7 +399,8 @@ function Section({ title, children }) {
 function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channels = CHANNELS, shippers = SHIPPERS, sizes = SIZES, isMobile = false }) {
   const parsedInit = splitOrderNotes(init?.obs);
   const parsedContact = splitContact(init?.contato);
-  const [form, setForm] = useState({ ...EMPTY, ...(init || {}), contato: parsedContact.contato, instagram: parsedContact.instagram, obs: parsedInit.visibleObs, obsInterna: parsedInit.internalObs || "" });
+  const parsedTransport = splitTransport(init?.transp);
+  const [form, setForm] = useState({ ...EMPTY, ...(init || {}), transp: parsedTransport.transportadora, transpServico: parsedTransport.servico, contato: parsedContact.contato, instagram: parsedContact.instagram, obs: parsedInit.visibleObs, obsInterna: parsedInit.internalObs || "" });
   const [images, setImages] = useState(init?.imgs || []);
   const [extraItems, setExtraItems] = useState(parsedInit.extraItems);
   const [statusHistory, setStatusHistory] = useState(parsedInit.statusHistory.length ? parsedInit.statusHistory : [getStatusHistoryEntry((init || EMPTY).status)]);
@@ -447,10 +464,11 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
     }
     setSaving(true);
     const id = form.id || generateId();
-    const { instagram, obsInterna, ...dbForm } = form;
+    const { instagram, obsInterna, transpServico, ...dbForm } = form;
     const row = {
       ...dbForm,
       id,
+      transp: buildTransport(form.transp, form.transpServico),
       contato: buildContact(form.contato, form.instagram),
       obs: buildOrderNotes(form.obs, extraItems, statusHistory, form.obsInterna),
       imgs: images,
@@ -597,6 +615,16 @@ function Form({ init, onSave, onCancel, isEdit, customerSuggestions = [], channe
           </Field>
           <Field label="Frete (R$)"><input value={form.frete} onChange={(event) => setField("frete", formatCurrencyInput(event.target.value))} style={inputStyle} placeholder="Ex: 25,00" /></Field>
         </div>
+        {form.transp === "Correios" && (
+          <Field label="Servico dos Correios">
+            <select value={form.transpServico || ""} onChange={(event) => setField("transpServico", event.target.value)} style={inputStyle}>
+              <option value="">Selecionar...</option>
+              <option value="Sedex">Sedex</option>
+              <option value="PAC">PAC</option>
+              <option value="Mini Pac">Mini Pac</option>
+            </select>
+          </Field>
+        )}
         <div style={twoCol}>
           <Field label="Confeccao ate"><input type="date" value={form.pconf} onChange={(event) => setField("pconf", event.target.value)} style={inputStyle} /></Field>
           <Field label="Entrega Estimada"><input type="date" value={form.pent} onChange={(event) => setField("pent", event.target.value)} style={inputStyle} /></Field>
@@ -1117,7 +1145,7 @@ export default function App() {
               {filteredOrders.length === 0 ? <div style={{ textAlign: "center", padding: "60px 20px", background: THEME.card, borderRadius: 18, border: `1px dashed ${THEME.br}`, color: THEME.tl }}><div style={{ fontSize: 34, marginBottom: 10 }}>ðŸ”®</div><div style={{ fontSize: 16, fontWeight: 700, color: THEME.tm, marginBottom: 6, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Nenhum pedido ainda" : "Nenhum resultado"}</div><div style={{ fontSize: 13, fontFamily: "Poppins, sans-serif" }}>{orders.length === 0 ? "Crie o primeiro na aba Novo" : "Tente outros filtros"}</div></div> : filteredOrders.map((order) => <Card key={order.id} order={order} onUpdate={updateOrder} onDelete={deleteOrder} onDuplicate={duplicateOrder} onToast={showToast} isMobile={isMobile} />)}
             </div>
           )}
-          {tab === "kanban" && <div style={{ overflowX: "auto", paddingBottom: 8 }}><div style={{ display: "flex", gap: 10, minWidth: "max-content" }}>{STATUS_LIST.map((status) => { const colors = STATUS_COLORS[status]; const list = sortedKanbanOrders(status); return <div key={status} style={{ width: 195, flexShrink: 0 }}><div style={{ background: colors.bg, color: colors.cl, padding: "8px 12px", borderRadius: "14px 14px 0 0", fontWeight: 700, fontSize: 12, display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "Poppins, sans-serif", border: `1px solid ${THEME.br}` }}><span>{colors.em} {status}</span><span style={{ background: "rgba(255,255,255,0.65)", borderRadius: 20, padding: "2px 8px" }}>{list.length}</span></div><div style={{ background: "#FCFBF8", border: `1px solid ${THEME.br}`, borderTop: "none", borderRadius: "0 0 14px 14px", padding: 8, minHeight: 100 }}>{list.length === 0 ? <div style={{ textAlign: "center", padding: "24px 10px", color: THEME.tl, fontSize: 12, fontFamily: "Poppins, sans-serif" }}>Vazio</div> : list.map((order) => <div key={order.id} onClick={() => { setSearch(order.nome); setFilter("Todos"); setTab("lista"); }} style={{ background: isOverdue(order) ? "#FFF4E8" : THEME.card, border: `1px solid ${isOverdue(order) ? "#FDBA74" : THEME.br}`, borderRadius: 12, padding: "10px 12px", marginBottom: 8, cursor: "pointer", boxShadow: "0 8px 18px rgba(31,41,55,0.05)" }}><div style={{ fontWeight: 700, fontSize: 13, color: THEME.tm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "Poppins, sans-serif" }}>{order.nome || "Cliente"}</div><div style={{ fontSize: 11, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>{order.tipo}{order.tipo === "BrajÃ¡" ? ` ${order.fios}f` : ""} Â· {order.mat} Â· {order.tam}</div>{order.pent && <div style={{ fontSize: 10, color: isOverdue(order) ? "#C2410C" : THEME.tl, marginTop: 4, fontFamily: "Poppins, sans-serif" }}>{isOverdue(order) ? "Atrasado: " : "Entrega: "}{formatDate(order.pent)}</div>}{order.valor && <div style={{ fontSize: 12, fontWeight: 700, color: THEME.primary, marginTop: 4, fontFamily: "Poppins, sans-serif" }}>{formatCurrency(getTotal(order))}</div>}{order.urg && <div style={{ fontSize: 10, color: THEME.gold, fontWeight: 700, marginTop: 2, fontFamily: "Poppins, sans-serif" }}>âš¡ URGENTE</div>}</div>)}</div></div>; })}</div></div>}
+          {tab === "kanban" && <div style={{ overflowX: "auto", paddingBottom: 8 }}><div style={{ display: "flex", gap: 10, minWidth: "max-content" }}>{STATUS_LIST.map((status) => { const colors = STATUS_COLORS[status]; const list = sortedKanbanOrders(status); return <div key={status} style={{ width: 195, flexShrink: 0 }}><div style={{ background: colors.bg, color: colors.cl, padding: "8px 12px", borderRadius: "14px 14px 0 0", fontWeight: 700, fontSize: 12, display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "Poppins, sans-serif", border: `1px solid ${THEME.br}` }}><span>{cleanText(status)}</span><span style={{ background: "rgba(255,255,255,0.65)", borderRadius: 20, padding: "2px 8px" }}>{list.length}</span></div><div style={{ background: "#FCFBF8", border: `1px solid ${THEME.br}`, borderTop: "none", borderRadius: "0 0 14px 14px", padding: 8, minHeight: 100 }}>{list.length === 0 ? <div style={{ textAlign: "center", padding: "24px 10px", color: THEME.tl, fontSize: 12, fontFamily: "Poppins, sans-serif" }}>Vazio</div> : list.map((order) => <div key={order.id} onClick={() => { setSearch(order.nome); setFilter("Todos"); setTab("lista"); }} style={{ background: isOverdue(order) ? "#FFF4E8" : THEME.card, border: `1px solid ${isOverdue(order) ? "#FDBA74" : THEME.br}`, borderRadius: 12, padding: "10px 12px", marginBottom: 8, cursor: "pointer", boxShadow: "0 8px 18px rgba(31,41,55,0.05)" }}><div style={{ fontWeight: 700, fontSize: 13, color: THEME.tm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "Poppins, sans-serif" }}>{order.nome || "Cliente"}</div><div style={{ fontSize: 11, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>{cleanText(order.tipo)}{cleanText(order.tipo) === "Braja" ? ` ${order.fios}f` : ""} · {cleanText(order.mat)} · {cleanText(order.tam)}</div>{order.pent && <div style={{ fontSize: 10, color: isOverdue(order) ? "#C2410C" : THEME.tl, marginTop: 4, fontFamily: "Poppins, sans-serif" }}>{isOverdue(order) ? "Atrasado: " : "Entrega: "}{formatDate(order.pent)}</div>}{order.valor && <div style={{ fontSize: 12, fontWeight: 700, color: THEME.primary, marginTop: 4, fontFamily: "Poppins, sans-serif" }}>{formatCurrency(getTotal(order))}</div>}{order.urg && <div style={{ fontSize: 10, color: THEME.gold, fontWeight: 700, marginTop: 2, fontFamily: "Poppins, sans-serif" }}>URGENTE</div>}</div>)}</div></div>; })}</div></div>}
           {tab === "agenda" && (
             <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 22, padding: "22px 20px", boxShadow: "0 22px 60px rgba(31,41,55,0.08)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
