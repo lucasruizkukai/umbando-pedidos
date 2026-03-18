@@ -92,6 +92,21 @@ function isDueSoon(order) {
   return diff >= 0 && diff <= 2;
 }
 
+function getDueLabel(order) {
+  const due = order.pent || order.pconf;
+  if (!due || ["Concluído", "Cancelado"].includes(order.status)) return "";
+  const dueDate = new Date(due);
+  const today = new Date();
+  dueDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.round((dueDate.getTime() - today.getTime()) / 86400000);
+  if (diff < 0) return `Atrasado desde ${formatDate(due)}`;
+  if (diff === 0) return "Vence hoje";
+  if (diff === 1) return "Vence amanhã";
+  if (diff === 2) return "Vence em 2 dias";
+  return `Entrega ${formatDate(due)}`;
+}
+
 function isOverdue(order) {
   const due = order.pent || order.pconf;
   if (!due || ["Concluído", "Cancelado"].includes(order.status)) return false;
@@ -589,6 +604,7 @@ function Card({ order, onUpdate, onDelete, onDuplicate }) {
   const overdue = isOverdue(order);
   const dueSoon = isDueSoon(order);
   const clientSummary = buildClientSummary(order, extraItems, visibleObs);
+  const dueLabel = getDueLabel(order);
 
   if (edit) {
     return <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 18, padding: 20, marginBottom: 10, boxShadow: "0 18px 40px rgba(31,41,55,0.08)" }}><Form init={order} isEdit onSave={(updated) => { onUpdate(updated); setEdit(false); }} onCancel={() => setEdit(false)} /></div>;
@@ -674,6 +690,27 @@ function Card({ order, onUpdate, onDelete, onDuplicate }) {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 13 }}>
             {pairs.map(([key, value]) => <div key={key} style={{ background: THEME.soft, borderRadius: 12, padding: "9px 11px", border: `1px solid ${THEME.br}` }}><div style={{ fontSize: 10, fontWeight: 700, color: THEME.tl, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 2, fontFamily: "Poppins, sans-serif" }}>{key}</div><div style={{ fontSize: 13, color: THEME.tm, wordBreak: "break-word", whiteSpace: "pre-wrap", fontFamily: "Poppins, sans-serif" }}>{value || "—"}</div></div>)}
           </div>
+          {parsedNotes.statusHistory?.length > 0 && (
+            <div style={{ background: "#FFFFFF", border: `1px solid ${THEME.br}`, borderRadius: 14, padding: "12px 14px", marginBottom: 12 }}>
+              <div style={{ ...labelStyle, marginBottom: 8, color: THEME.primary }}>Linha do tempo</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {parsedNotes.statusHistory.map((item, index) => (
+                  <div key={item.id || index} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ background: THEME.primarySoft, border: `1px solid ${THEME.br}`, borderRadius: 999, padding: "6px 10px" }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: THEME.primary, fontFamily: "Poppins, sans-serif" }}>{item.status}</div>
+                      <div style={{ fontSize: 10, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>{formatDate(item.at)}</div>
+                    </div>
+                    {index < parsedNotes.statusHistory.length - 1 && <div style={{ width: 16, height: 1, background: THEME.br }} />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {dueLabel && (
+            <div style={{ background: overdue ? "#FFF4E8" : dueSoon ? "#FFFBEA" : THEME.panel, border: `1px solid ${overdue ? "#FDBA74" : dueSoon ? "#FDE68A" : THEME.br}`, borderRadius: 12, padding: "10px 12px", marginBottom: 12, fontSize: 13, color: overdue ? "#C2410C" : dueSoon ? "#A16207" : THEME.tm, fontWeight: 600, fontFamily: "Poppins, sans-serif" }}>
+              {dueLabel}
+            </div>
+          )}
           {extraItems.length > 0 && (
             <div style={{ background: THEME.panel, border: `1px solid ${THEME.br}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
               <div style={{ ...labelStyle, marginBottom: 8, color: THEME.gold }}>Peças adicionais</div>
@@ -723,6 +760,7 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [deadlineFilter, setDeadlineFilter] = useState("Todos");
   const [toast, setToast] = useState("");
+  const [draftOrder, setDraftOrder] = useState(null);
   useEffect(() => {
     supabase.from("pedidos").select("*").order("criado_em", { ascending: false }).then(({ data, error }) => {
       if (!error && data) setOrders(data);
@@ -737,13 +775,15 @@ export default function App() {
   const saveOrder = (order) => {
     setOrders((prev) => (prev.find((item) => item.id === order.id) ? prev.map((item) => (item.id === order.id ? order : item)) : [order, ...prev]));
     showToast(order.id && orders.find((item) => item.id === order.id) ? "Pedido atualizado com sucesso." : "Pedido salvo com sucesso.");
+    setDraftOrder(null);
   };
   const updateOrder = (order) => setOrders((prev) => prev.map((item) => (item.id === order.id ? order : item)));
   const deleteOrder = (id) => setOrders((prev) => prev.filter((item) => item.id !== id));
   const duplicateOrder = (order) => {
-    const clone = { ...order, id: generateId(), criado_em: new Date().toISOString(), upd: new Date().toISOString(), status: "Novo", rastreio: "" };
-    saveOrder(clone);
-    setTab("lista");
+    const clone = { ...order, id: "", criado_em: "", upd: "", status: "Novo", rastreio: "", pconf: "", pent: "" };
+    setDraftOrder(clone);
+    setTab("novo");
+    showToast("Pedido duplicado para edição.");
   };
   const exportCsv = () => {
     const header = ["Nome", "Contato", "Instagram", "Canal", "Status", "Entrega", "Valor", "Frete", "Total", "Observacoes"];
@@ -797,6 +837,7 @@ export default function App() {
     return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).reduce((sum, order) => sum + getTotal(order), 0);
   const overdueCount = orders.filter(isOverdue).length;
+  const channelCounts = CHANNELS.map((channel) => [channel, orders.filter((order) => order.canal === channel).length]);
   const sortedKanbanOrders = (status) =>
     orders
       .filter((order) => order.status === status)
@@ -811,6 +852,13 @@ export default function App() {
             <div><div style={{ fontSize: 22, fontWeight: 800, color: THEME.tm, letterSpacing: 0.2 }}>Umbando · Pedidos</div><div style={{ fontSize: 12, color: THEME.primary, fontWeight: 600 }}>Gerenciador de encomendas personalizadas</div></div>
             <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>{[["Andamento", inProgress, THEME.primary], ["Atrasados", overdueCount, "#C2410C"], ["Mês", formatCurrency(revenueMonth), THEME.tm]].map(([label, value, color]) => <div key={label} style={{ background: "#FFFFFF", border: `1px solid ${THEME.br}`, borderRadius: 14, padding: "7px 12px", textAlign: "center", minWidth: 72, boxShadow: "0 8px 22px rgba(31,41,55,0.05)" }}><div style={{ fontSize: 18, fontWeight: 800, color, fontFamily: "Poppins, sans-serif" }}>{value}</div><div style={{ fontSize: 10, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>{label}</div></div>)}</div>
           </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+            {channelCounts.map(([label, value]) => (
+              <div key={label} style={{ background: "#FFFFFF", border: `1px solid ${THEME.br}`, borderRadius: 999, padding: "6px 12px", fontSize: 12, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>
+                <strong style={{ color: THEME.tm }}>{label}</strong>: {value}
+              </div>
+            ))}
+          </div>
           <div style={{ display: "flex", gap: 6 }}>{[["novo", "➕ Novo"], ["lista", `📦 Pedidos (${orders.length})`], ["kanban", "📊 Kanban"]].map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} style={{ background: tab === key ? THEME.primary : "#FFFFFF", color: tab === key ? "#FFFFFF" : THEME.tl, border: `1px solid ${tab === key ? THEME.primary : THEME.br}`, padding: "10px 16px", fontSize: 13, fontWeight: tab === key ? 700 : 500, cursor: "pointer", borderRadius: "14px 14px 0 0", fontFamily: "Poppins, sans-serif", boxShadow: tab === key ? "0 10px 24px rgba(78,95,77,0.16)" : "none" }}>{label}</button>)}</div>
         </div>
       </div>
@@ -823,7 +871,7 @@ export default function App() {
           </div>
         )}
         {!loaded ? <div style={{ textAlign: "center", padding: 80, color: THEME.tl, fontFamily: "Poppins, sans-serif" }}>⏳ Carregando pedidos...</div> : <>
-          {tab === "novo" && <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 22, padding: "22px 20px", boxShadow: "0 22px 60px rgba(31,41,55,0.08)" }}><Form onSave={(order) => { saveOrder(order); setTab("lista"); }} /></div>}
+          {tab === "novo" && <div style={{ background: THEME.card, border: `1px solid ${THEME.br}`, borderRadius: 22, padding: "22px 20px", boxShadow: "0 22px 60px rgba(31,41,55,0.08)" }}><Form init={draftOrder} onSave={(order) => { saveOrder(order); setTab("lista"); }} onCancel={draftOrder ? () => { setDraftOrder(null); setTab("lista"); } : undefined} /></div>}
           {tab === "lista" && (
             <div>
               <div style={{ marginBottom: 14, display: "flex", flexDirection: "column", gap: 10 }}>
